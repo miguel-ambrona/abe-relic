@@ -58,5 +58,5 @@ opam install relic-ocaml-bindings
 
 ~~~~~
 make
-./abe.native
+./test_abe.native
 ~~~~~
