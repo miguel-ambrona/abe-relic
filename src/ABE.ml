@@ -296,48 +296,58 @@ module ABE = struct
 
 end
 
+
+(* ** Util *)
+
+let matrix_from_policy ~nattrs ~rep p =
+  sort_matrix ~rep (matrix_of_formula p) nattrs
+  |> unzip1
+  |> L.map ~f:(L.map ~f:(fun i -> bn_read_str_mod (string_of_int i)))
+  
+let set_attributes ~nattrs ~rep attrs =
+  let rec repeat output = function
+    | [] -> output
+    | a :: rest -> repeat (output @ (mk_list a rep)) rest
+  in
+  let rec mk_bit_vector output k =
+    if k > nattrs then output
+    else
+      if L.exists attrs ~f:(function | Leaf(Att(i)) -> i = k | _ -> assert false) then
+        mk_bit_vector (output @ [ R.bn_one () ]) (k+1)
+      else
+        mk_bit_vector (output @ [ R.bn_zero () ]) (k+1)
+  in
+  repeat [] (mk_bit_vector [] 1)
+
+let (&.) a b = And(a,b)
+let (|.) a b = Or(a,b)
+
 (* ** Test *)
 
 let test () =
-  let a = Leaf(Att(1)) in
-  let b = Leaf(Att(2)) in
-  let c = Leaf(Att(3)) in
-  let d = Leaf(Att(4)) in
-  let e = Leaf(Att(5)) in
+  let tall     = Leaf(Att(1)) in
+  let dark     = Leaf(Att(2)) in
+  let handsome = Leaf(Att(3)) in
+  let phd      = Leaf(Att(4)) in
+  let cs       = Leaf(Att(5)) in
+  let math     = Leaf(Att(6)) in
 
-  let n_attrs = 5 in
-  let repetitions = 2 in
-  let and_bound = 4 in
+  let n_attrs = 6 in      (* Number of attributes *)
+  let repetitions = 2 in  (* Bound on the number of times an attribute can appear as a Leaf node *)
+  let and_bound = 4 in    (* Bound on the number of AND gates *)
   
-  let matrix_from_policy p =
-    sort_matrix ~rep:repetitions (matrix_of_formula p) n_attrs
-  |> unzip1
-  |> L.map ~f:(L.map ~f:(fun i -> bn_read_str_mod (string_of_int i)))
-  in
-  
-  let duplicate_attributes ~rep attrs =
-    let rec aux output = function
-      | [] -> output
-      | a :: rest -> aux (output @ (mk_list a rep)) rest
-    in
-    aux [] attrs
-  in
-
   let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
-  let policy = And(e, Or(Or(And(a,b), And(c,d)), And(Or(a,b), Or(c,d)))) in
-  let xM = matrix_from_policy policy in
+  let policy = (tall &. dark &. handsome) |. (phd &. cs) in
+  let xM = matrix_from_policy ~nattrs:n_attrs ~rep:repetitions policy in
   let msg = R.gt_rand () in
 
   let ct_x = ABE.enc mpk xM msg in
 
-  let bn0 = R.bn_zero () in
-  let bn1 = R.bn_one () in
-
-  let y = duplicate_attributes ~rep:repetitions [ bn1; bn1; bn0; bn0; bn1 ] in
+  let y = set_attributes ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
   let sk_y = ABE.keyGen mpk msk y in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  let y' = duplicate_attributes ~rep:repetitions [ bn1; bn1; bn1; bn1; bn0 ] in
+  let y' = set_attributes ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; math ] in
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
 
