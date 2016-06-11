@@ -101,7 +101,9 @@ module DSG = struct
     prod_Br :: prod_WBr
 
 end
-  
+
+(* ** Functions for boolean formulas *)
+
 module GaussElim = LinAlg(struct
   type t = R.bn
   let add = bn_add_mod
@@ -170,7 +172,12 @@ let pp_matrix _fmt =
     F.printf "[%a](%a)\n" (pp_list ", " pp_int) v pp_attribute a
   )
 
-module Predicate_Encoding(Group : Group) = struct        
+(* ** Predicate Encodings *)
+
+module Boolean_Formula_PE(Group : Group) = struct
+
+  (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
+
   type t = Group.t list
   let ( +! ) = L.map2_exn ~f:Group.add                             (* Add two group vectors *)
   let ( *.!) g = L.map ~f:(Group.mul g)                            (* Mul group element by Zp vector *)
@@ -189,7 +196,6 @@ module Predicate_Encoding(Group : Group) = struct
     let w = L.slice w_u_u0 0 l in
     let u = L.slice w_u_u0 l (l+l'-1) in
     let u0 = L.hd_exn (L.tl_exn w_u_u0) in
-(*    let u0 = L.hd_exn (L.slice w_u_u0 (l+l'-1) (l+l')) in *)
     w +! (matrix_times_vector ~add:Group.add ~mul:(fun exp g -> Group.mul g exp) xM (u0 :: u))
 
   let rE y w_u_u0 =
@@ -204,39 +210,39 @@ module Predicate_Encoding(Group : Group) = struct
   let sD xM y c =
     let l' = L.length (L.hd_exn xM) in
     let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-    (if filtered = [] then failwith "Decryption failed" else ());
-    let matrix = transpose_matrix filtered in
-    let a = match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
-      | None -> failwith "Decryption failed"
-      | Some s -> s
-    in
-    let y_c = L.filter (L.zip_exn c y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-    let a_y_c = L.map2_exn ~f:Group.mul y_c a in
-    L.fold_left (L.tl_exn a_y_c)
-      ~init:(L.hd_exn a_y_c)
-      ~f:Group.add
-      
+    if filtered = [] then zero (* No attributes in the key *)
+    else
+      let matrix = transpose_matrix filtered in
+      match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
+      | None -> zero (* Decryption failed *)
+      | Some a ->
+         let y_c = L.filter (L.zip_exn c y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+         let a_y_c = L.map2_exn ~f:Group.mul y_c a in
+         L.fold_left (L.tl_exn a_y_c)
+           ~init:(L.hd_exn a_y_c)
+           ~f:Group.add
+           
   let rD xM y d_d' =
     let l' = L.length (L.hd_exn xM) in
     let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-    (if filtered = [] then failwith "Decryption failed" else ());
-    let matrix = transpose_matrix filtered in
-    let a = match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
-      | None -> failwith "Decryption failed"
-      | Some s -> s
-    in
-    let d' = L.hd_exn d_d' in
-    let d = L.tl_exn d_d' in
-    let d = L.filter (L.zip_exn d y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-    let a_d = L.map2_exn ~f:Group.mul d a in
-    Group.add
-      d'
-      (L.fold_left (L.tl_exn a_d)
-         ~init:(L.hd_exn a_d)
-         ~f:Group.add)
+    if filtered = [] then zero (* No attributes in the key *)
+    else
+      let matrix = transpose_matrix filtered in
+      match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
+      | None -> zero (* Decryption failed *)
+      | Some a ->
+         let d' = L.hd_exn d_d' in
+         let d = L.tl_exn d_d' in
+         let d = L.filter (L.zip_exn d y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+         let a_d = L.map2_exn ~f:Group.mul d a in
+         Group.add
+           d'
+           (L.fold_left (L.tl_exn a_d)
+              ~init:(L.hd_exn a_d)
+              ~f:Group.add)
 end
 
-module G1_PE = Predicate_Encoding(struct
+module G1_PE = Boolean_Formula_PE(struct
   type t = R.g1 list
   let add = L.map2_exn ~f:R.g1_add
   let neg = L.map ~f:R.g1_neg
@@ -245,7 +251,7 @@ module G1_PE = Predicate_Encoding(struct
   let zero = mk_list (R.g1_infty ()) (DSG.k+1)
 end)
 
-module G2_PE = Predicate_Encoding(struct
+module G2_PE = Boolean_Formula_PE(struct
   type t = R.g2 list
   let add = L.map2_exn ~f:R.g2_add
   let neg = L.map ~f:R.g2_neg
@@ -290,13 +296,18 @@ module ABE = struct
 
 end
 
+(* ** Test *)
+
 let test () =
-  let a1 = Leaf(Att(1)) in
-  let a2 = Leaf(Att(2)) in
-  let a3 = Leaf(Att(3)) in
-  let n_attrs = 3 in
-  let repetitions = 1 in
-  let and_bound = 1 in
+  let a = Leaf(Att(1)) in
+  let b = Leaf(Att(2)) in
+  let c = Leaf(Att(3)) in
+  let d = Leaf(Att(4)) in
+  let e = Leaf(Att(5)) in
+
+  let n_attrs = 5 in
+  let repetitions = 2 in
+  let and_bound = 4 in
   
   let matrix_from_policy p =
     sort_matrix ~rep:repetitions (matrix_of_formula p) n_attrs
@@ -313,7 +324,7 @@ let test () =
   in
 
   let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
-  let policy = And(a1, Or(a2, a3)) in
+  let policy = And(e, Or(Or(And(a,b), And(c,d)), And(Or(a,b), Or(c,d)))) in
   let xM = matrix_from_policy policy in
   let msg = R.gt_rand () in
 
@@ -322,10 +333,13 @@ let test () =
   let bn0 = R.bn_zero () in
   let bn1 = R.bn_one () in
 
-  let y = duplicate_attributes ~rep:repetitions [ bn1; bn0; bn1 ] in
+  let y = duplicate_attributes ~rep:repetitions [ bn1; bn1; bn0; bn0; bn1 ] in
   let sk_y = ABE.keyGen mpk msk y in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  if (R.gt_equal msg msg') then F.printf "ABE test succedded!\n"
-  else assert false
+  let y' = duplicate_attributes ~rep:repetitions [ bn1; bn1; bn1; bn1; bn0 ] in
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
 
+  if (R.gt_equal msg msg') && not(R.gt_equal msg msg'') then F.printf "ABE test succedded!\n"
+  else failwith "Test failed"

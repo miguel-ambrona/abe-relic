@@ -3,12 +3,12 @@ COREFLAGS=-pkg core_kernel \
     -tag short_paths \
     -cflags -strict-sequence
 
-.PHONY: install abe.native
+.PHONY: install test_abe.native
 
-all: abe.native
+all: test_abe.native
 
-abe.native:
-	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./abe.native
+test_abe.native:
+	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./test_abe.native
 
 OCAMLDEP= ocamlfind ocamldep -package core_kernel \
             -I src one-line
