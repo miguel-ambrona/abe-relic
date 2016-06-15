@@ -1,14 +1,17 @@
-OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -classic-display -use-ocamlfind -quiet -ocamlc ocamlc -ocamlopt ocamlopt
+OCAMLBUILDFLAGS=-cflags "-w +a-e-9-44-48" -use-menhir -menhir "menhir -v" -classic-display -use-ocamlfind -quiet -ocamlc ocamlc -ocamlopt ocamlopt
 COREFLAGS=-pkg core_kernel \
     -tag short_paths \
     -cflags -strict-sequence
 
-.PHONY: install test_abe.native
+.PHONY: install test_abe.native abe_relic.native
 
-all: test_abe.native
+all: abe_relic.native
 
-test_abe.native:
-	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./test_abe.native
+abe_relic.native:
+	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./abe_relic.native
+
+test:
+	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./test_abe.native && ./test_abe.native
 
 OCAMLDEP= ocamlfind ocamldep -package core_kernel \
             -I src one-line

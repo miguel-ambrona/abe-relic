@@ -57,3 +57,54 @@ let unzip1 list =
 let unzip2 list =
   let (_,list2) = L.unzip list in
   list2
+
+let position_in_list el list =
+  let rec aux k =
+    if k >= (L.length list) then None
+    else if L.nth_exn list k = el then Some k
+    else aux (k+1)
+  in
+  aux 0
+
+let list_to_string list =
+  let del = ", " in
+  let rec aux output = function
+    | [] -> output
+    | s :: [] -> output ^ s
+    | s :: rest -> aux (output ^ s ^ del) rest
+  in
+  "[" ^ (aux "" list) ^ "]"
+
+let list_list_to_string list =
+  let del = ", " in
+  let rec aux output = function
+    | [] -> output
+    | l :: [] -> output ^ (list_to_string l)
+    | l :: rest -> aux (output ^ (list_to_string l) ^ del) rest
+  in
+  "[" ^ (aux "" list) ^ "]"
+
+let list_list_list_to_string list =
+  let del = ", " in
+  let rec aux output = function
+    | [] -> output
+    | l :: [] -> output ^ (list_list_to_string l)
+    | l :: rest -> aux (output ^ (list_list_to_string l) ^ del) rest
+  in
+  "[" ^ (aux "" list) ^ "]"
+
+let to_base64 ?(split = false) string =
+  let string64 = B64.encode string in
+  let n = String.length string64 in
+  let rec go output k =
+    if (n - k < 64) then
+      output ^ (String.slice string64 k n)
+    else
+      go (output ^ (String.slice string64 k (k+64)) ^ "\n") (k+64)
+  in
+  if not split then string64
+  else go "" 0
+
+let from_base64 string64 =
+  let string = String.strip string64 in
+  B64.decode string

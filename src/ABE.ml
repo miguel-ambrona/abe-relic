@@ -3,8 +3,6 @@ open Abbrevs
 open LinAlg
 open Util
 
-module R = Relic
-
 (* * ABE described in Improved Dual System ABE in Prime-Order Groups via Predicate Encodings *)
 
 let init () =
@@ -265,7 +263,7 @@ end)
 module ABE = struct
     
   let setup n =
-    let pp, _sp = DSG.sampP n in
+    let pp, _sp = DSG.sampP n in (* _sp is only used in the proof of security *)
     let (g1_A, _, _, _) = pp in
     let msk = sample_list ~f:R.g2_rand (DSG.k+1) in
     let mu_msk = matrix_times_vector ~add:R.gt_mul ~mul:R.e_pairing (transpose_matrix g1_A) msk in

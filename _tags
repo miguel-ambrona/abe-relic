@@ -1,7 +1,9 @@
 true: bin_annot, debug
 
 <src>: include
-<src/*>: package(core_kernel), package(relic)
+<src/*>: package(core_kernel),\
+         package(relic),\
+         package(base64)
 
 
 
