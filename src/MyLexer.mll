@@ -1,11 +1,11 @@
 {
-  open Parser
-  exception Error of string
+  open MyParser
+  exception Error1 of string
 
   let unterminated_comment () =
-    raise (Error "unterminated comment")
+    raise (Error1 "unterminated comment")
   let unterminated_string () =
-    raise (Error "unterminated string")
+    raise (Error1 "unterminated string")
 }
 
 let blank = [' ' '\t' '\r' '\n']

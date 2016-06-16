@@ -1,3 +1,4 @@
+open Poly
 open Core_kernel.Std
 open Abbrevs
 open LinAlg
@@ -161,14 +162,6 @@ let sort_matrix ?(rep = 1) matrix n_attrs =
   L.sort (aux matrix 1)
     ~cmp:(fun (_r1,a1) (_r2,a2) -> match a1,a2 with | Att(i1), Att(i2) -> i1 - i2)
 
-
-let pp_attribute fmt = function
-  | Att(i) -> F.fprintf fmt "%i" i
-
-let pp_matrix _fmt =
- L.iter ~f:(fun (v,a) ->
-    F.printf "[%a](%a)\n" (pp_list ", " pp_int) v pp_attribute a
-  )
 
 (* ** Predicate Encodings *)
 
@@ -348,6 +341,50 @@ let test () =
   let y' = set_attributes ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; math ] in
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
+
+  let module MyField = struct
+    type t = R.bn
+    let pp fmt i = F.fprintf fmt "%s" (R.bn_write_str i ~radix:10)      
+    let add  = bn_add_mod
+    let neg  = bn_neg_mod
+    let mul  = bn_mul_mod
+    let inv  = zp_inverse
+    let one  = R.bn_one ()
+    let zero = R.bn_zero ()
+    let is_zero = bn_is_zero_mod
+    let rec ring_exp m n =
+      if n > 0 then mul m (ring_exp m (n-1))
+      else if n = 0 then one
+      else failwith "Negative exponent"
+    let ladd cs = L.fold_left ~f:(fun acc c -> add c acc) ~init:zero cs
+    let from_int i = R.bn_read_str (string_of_int i) ~radix:10
+    let equal = R.bn_equal
+    let compare = R.bn_cmp
+    let use_parens = false
+  end
+  in
+
+  let module SP = MakePoly(
+    struct
+      type t = string
+      let pp = pp_string
+      let equal = (=)
+      let compare = compare
+    end) (MyField)
+  in
+
+  let x = SP.(var "x") in
+  let y = SP.(var "y") in
+  let w = SP.(var "w") in
+  let target = SP.((ring_exp x 2) +@ ((from_int 3) *@ x *@ y) +@ ((from_int 2) *@ x *@ w) +@ ((from_int 7) *@ y *@ w)) in
+
+  F.printf "%a\n" SP.pp target;
+
+  let module Alg = PolyAlg.PolyAlg (SP) in
+
+  let m = Alg.find_matrix [x;y] [x;w] target in
+  F.printf "%a\n" (Util.pp_matrix SP.Coeffs.pp) m;
+
 
   if (R.gt_equal msg msg') && not(R.gt_equal msg msg'') then F.printf "ABE test succedded!\n"
   else failwith "Test failed"

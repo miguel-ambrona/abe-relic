@@ -4,9 +4,9 @@ let wrap_error f s =
   try
     f sbuf
   with
-  | Lexer.Error msg ->
+  | MyLexer.Error1 msg ->
     failwith (Printf.sprintf "%s%!" msg)
-  | Parser.Error ->
+  | MyParser.Error ->
     let start = Lexing.lexeme_start sbuf in
     let err = Printf.sprintf
                 "Syntax error at offset %d (length %d): parsed ``%s'',\nerror at ``%s''"
@@ -25,10 +25,10 @@ let wrap_error f s =
     failwith err
 
 (** Parse type declaration. *)
-let pp_cmds = wrap_error (Parser.pp_cmds Lexer.lex)
-let mpk_cmds = wrap_error (Parser.mpk_cmds Lexer.lex)
-let msk_cmd  = wrap_error (Parser.msk_cmd Lexer.lex)
-let policy_cmd = wrap_error (Parser.policy_cmd Lexer.lex)
-let sk_attrs = wrap_error (Parser.sk_attrs Lexer.lex)
-let sk_cmds = wrap_error (Parser.sk_cmds Lexer.lex)
-let ct_cmds = wrap_error (Parser.ct_cmds Lexer.lex)
+let pp_cmds = wrap_error (MyParser.pp_cmds MyLexer.lex)
+let mpk_cmds = wrap_error (MyParser.mpk_cmds MyLexer.lex)
+let msk_cmd  = wrap_error (MyParser.msk_cmd MyLexer.lex)
+let policy_cmd = wrap_error (MyParser.policy_cmd MyLexer.lex)
+let sk_attrs = wrap_error (MyParser.sk_attrs MyLexer.lex)
+let sk_cmds = wrap_error (MyParser.sk_cmds MyLexer.lex)
+let ct_cmds = wrap_error (MyParser.ct_cmds MyLexer.lex)

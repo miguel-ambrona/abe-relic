@@ -41,7 +41,8 @@ let rec pp_list sep pp_elt f l =
   | [e] -> pp_elt f e
   | e::l -> F.fprintf f "%a%(%)%a" pp_elt e sep (pp_list sep pp_elt) l
 
-let pp_int fmt i = F.fprintf fmt "%i" i
+let pp_matrix pp_elt f m =
+  L.iter m ~f:(F.fprintf f "[%a]\n" (pp_list ", " pp_elt))
 
 let mk_list el n =
   let rec aux output n =
@@ -108,3 +109,69 @@ let to_base64 ?(split = false) string =
 let from_base64 string64 =
   let string = String.strip string64 in
   B64.decode string
+
+
+let equal_list eq xs0 ys0 =
+  let rec go xs ys =
+    match xs,ys with
+    | [], []       -> true
+    | x::xs, y::ys -> eq x y && go xs ys
+    | _            -> assert false
+  in
+  (L.length xs0 = L.length ys0) && go xs0 ys0
+
+let compare_list cmp xs0 ys0 =
+  let rec go xs ys =
+    match xs, ys with
+    | [], []       -> 0
+    | x::xs, y::ys ->
+      let d = cmp x y in
+      if d <> 0 then d
+      else go xs ys
+    | _            -> assert false
+  in
+  let d = L.length xs0 - L.length ys0 in
+  if d > 0 then 1
+  else if d < 0 then -1
+else go xs0 ys0
+
+let equal_pair eq1 eq2 (x1,x2) (y1,y2) =
+eq1 x1 y1 && eq2 x2 y2
+
+let compare_pair cmp1 cmp2 (x1,x2) (y1,y2) =
+  let r1 = cmp1 x1 y1 in
+  if r1 <> 0 then r1
+else cmp2 x2 y2
+
+
+let list_sum ~zero ~add list = L.fold_left list ~init:zero ~f:add
+
+let list_assoc a ab_list =
+  L.find_exn ab_list ~f:(fun (a',_) -> a = a') |> snd
+
+let conc_map f xs =
+  L.concat (L.map ~f xs)
+
+let cat_Some l =
+  let rec go acc = function
+    | Some(x)::xs  -> go (x::acc) xs
+    | None::xs     -> go acc      xs
+    | []           -> List.rev acc
+  in
+go [] l
+
+
+let pp_string fmt s = F.fprintf fmt "%s" s
+
+let pp_int fmt i = F.fprintf fmt "%i" i
+
+let list_to_matrix list n =
+  let rec aux matrix l =
+    if L.length l <= n then matrix @ [l]
+    else
+      let l1 = L.slice l 0 n in
+      let l2 = L.slice l n (L.length l) in
+      aux (matrix @ [l1]) l2
+  in
+  aux [] list
+    
