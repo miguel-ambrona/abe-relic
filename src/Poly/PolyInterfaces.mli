@@ -14,23 +14,6 @@ module type Var = sig
   val compare : t -> t -> int
 end
 
-(* ** Rings *)
-module type Ring = sig
-  type t
-  val pp : F.formatter -> t -> unit
-  val add : t -> t -> t
-  val neg : t -> t
-  val mul : t -> t -> t
-  val ring_exp : t -> int -> t
-  val one : t
-  val zero : t
-  val ladd : t list -> t
-  val from_int : int -> t
-  val equal : t -> t -> bool
-  val compare : t -> t -> int
-  val use_parens : bool
-end
-
 (* ** Fields *)
 module type Field = sig
   type t
@@ -98,6 +81,7 @@ module type Poly = sig
   val mons : t -> monom list
   val coeff : t -> monom -> coeff
   val coeff_in_field : t -> monom -> Coeffs.t
+  val coeff_to_field : Coeffs.t -> coeff
 
   val ( *@) : t -> t -> t
   val (+@)  : t -> t -> t

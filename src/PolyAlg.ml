@@ -16,9 +16,13 @@ module PolyAlg (P : Poly) = struct
         ~f:(fun l p -> l @ (P.mons p))
            |> L.dedup ~compare:P.mon_compare
     in
-    F.printf "[%a]\n" (pp_list ", " P.pp_monom) all_monomials;
+    F.printf "[%a]\n" (pp_list ",\n" P.pp_monom) all_monomials;
+    F.print_flush();
     let matrix = L.map all_monomials ~f:(fun m -> L.map polys ~f:(fun p -> P.coeff_in_field p m)) in
     let vector = L.map all_monomials ~f:(fun m -> P.coeff_in_field target m) in
+    F.printf "\n%a\n" (Util.pp_matrix P.Coeffs.pp) matrix;
+    F.printf "\n[%a]\n" (Util.pp_list "," P.Coeffs.pp) vector;
+    F.print_flush ();
     Gauss.solve matrix vector
       
 

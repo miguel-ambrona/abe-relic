@@ -6,30 +6,6 @@
 open Abbrevs
 open Util
 open PolyInterfaces
-open Big_int
-
-(* ** [Ring] instance for [int]
- * ----------------------------------------------------------------------- *)
-
-module IntRing = struct
-  type t = big_int
-  let pp fmt i = F.fprintf fmt "%s" (string_of_big_int i)
-
-  let add  = add_big_int
-  let neg  = minus_big_int
-  let mul  = mult_big_int
-  let one  = unit_big_int
-  let zero = zero_big_int
-  let rec ring_exp m n =
-    if n > 0 then mul m (ring_exp m (n-1))
-    else if n = 0 then one
-    else failwith "Negative exponent in IntRing"
-  let ladd cs = L.fold_left ~f:(fun acc c -> add c acc) ~init:zero cs
-  let from_int i = big_int_of_int i
-  let equal = eq_big_int
-  let compare = compare_big_int
-  let use_parens = false
-end
 
 (* ** Functor for Polynomials
  * ----------------------------------------------------------------------- *)
@@ -216,6 +192,7 @@ module MakePoly (V : Var) (C : Field) = struct
   let coeff f m = try list_assoc m f with Not_found -> C.zero
 
   let coeff_in_field = coeff
+  let coeff_to_field a = a
 
   let map_coeffs cf f =
     cat_Some

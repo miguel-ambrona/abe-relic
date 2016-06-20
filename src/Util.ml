@@ -34,6 +34,13 @@ let matrix_times_matrix ~add ~mul m1 m2 =
     
 let matrix_map ~f m = L.map m ~f:(L.map ~f)
 
+let list_range i j =
+  let rec aux output k =
+    if k >= j then output
+    else aux (output @ [k]) (k+1)
+  in
+  aux [] i
+
 
 let rec pp_list sep pp_elt f l =
   match l with

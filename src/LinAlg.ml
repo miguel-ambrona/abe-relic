@@ -12,6 +12,7 @@ let rec pp_list sep pp_elt f l =
 
 module type Field = sig
   type t
+  val pp : Format.formatter -> t -> unit
   val add  : t -> t -> t
   val neg  : t -> t
   val mul  : t -> t -> t
