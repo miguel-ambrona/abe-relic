@@ -41,6 +41,32 @@ let list_range i j =
   in
   aux [] i
 
+let list_empty_intersection ~equal list1 list2 =
+  let rec aux = function
+    | [] -> true
+    | a :: rest ->
+       if L.mem ~equal list1 a then false
+       else aux rest
+  in
+  aux list2
+
+let get_positions_list ~predicate list =
+  let rec aux output k = function
+    | [] -> output
+    | a :: rest ->
+       if predicate a then aux (output @ [k]) (k+1) rest
+       else aux output (k+1) rest
+  in
+  aux [] 0 list
+
+let set_positions_list ~positions ~value list =
+  let rec aux output k = function
+    | [] -> output
+    | a :: rest ->
+       if L.mem positions k then aux (output @ [value]) (k+1) rest
+       else aux (output @ [a]) (k+1) rest
+  in
+  aux [] 0 list
 
 let rec pp_list sep pp_elt f l =
   match l with

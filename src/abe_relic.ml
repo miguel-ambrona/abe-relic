@@ -95,7 +95,7 @@ let main =
          end
        in
        let y = set_attributes ~nattrs:(L.length pp.pp_attributes) ~rep y_list in
-       let sk_y =  ABE.keyGen mpk msk y in
+       let sk_y =  PredEncABE.keyGen mpk msk y in
        let (k0,k1), _ = sk_y in
 
        let k0_str = L.map k0 ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64) in
@@ -135,7 +135,7 @@ let main =
        let xM = matrix_from_policy ~nattrs ~rep (Eval.eval_policy pp.pp_attributes ev_policy) in
        let gt_msg = R.gt_rand () in
 
-       let ct_x = ABE.enc mpk xM gt_msg in
+       let ct_x = PredEncABE.enc mpk xM gt_msg in
        let (c0, c1, c), _ = ct_x in
        let password = SHA.sha256 (R.gt_write_bin ~compress gt_msg |> to_base64) in
        AES.encrypt ~key:password ~in_file:msg_file ~out_file;
@@ -183,7 +183,7 @@ let main =
        let command = Format.sprintf "printf '%s' > %s" aes_ct "/tmp/aux.txt" in
        let _ = Unix.open_process command in
 
-       let gt_msg = ABE.dec mpk sk_y ct_x in
+       let gt_msg = PredEncABE.dec mpk sk_y ct_x in
        let password = SHA.sha256 (R.gt_write_bin ~compress gt_msg |> to_base64) in
        AES.decrypt ~key:password ~in_file:"/tmp/aux.txt" ~out_file
 

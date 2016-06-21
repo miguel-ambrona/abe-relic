@@ -255,7 +255,7 @@ end)
 
 (* ** Attribute-Based Encryption *)
   
-module ABE = struct
+module PredEncABE = struct
     
   let setup n =
     let pp, _sp = DSG.sampP n in (* _sp is only used in the proof of security *)
@@ -471,14 +471,25 @@ module Pair_Encoding (Par : PairEnc_Par) = struct
     let module Alg = PolyAlg.PolyAlg (P) in
     let target = P.((mk_v 1) *@ mk_s) in
 
-    Alg.find_matrix k c target
+    let f monoms2 m1 = L.map monoms2 ~f:(fun m2 -> P.((from_mon m1) *@ (from_mon m2)) |> monom_of_monomP) in
+    let ribj = L.map monom_ri ~f:(f monom_bi) |> L.concat in
+    let sibj = L.map monom_si ~f:(f monom_bi) |> L.concat in
+    let sbj = L.map monom_bi ~f:(fun m -> P.(mk_s *@ (from_mon m)) |> monom_of_monomP) in
+
+    let ri_bj_s_bk = L.map ribj ~f:(f sbj) |> L.concat in
+    let ri_bj_sk_bl = L.map ribj ~f:(f sibj) |> L.concat in
+    let forbidden = ri_bj_s_bk @ ri_bj_sk_bl in
+
+    let requirement p = list_empty_intersection ~equal:P.mon_equal (P.mons p) forbidden in
+    
+    Alg.find_matrix ~requirement k c target
 
 end
 
 
 (* ** Pair-Encodings Attribute-Based Encryption *)
   
-module Pair_Enc_ABE (Par : PairEnc_Par) = struct
+module PairEncABE (Par : PairEnc_Par) = struct
 
   let add_G1 = L.map2_exn ~f:R.g1_add
   let neg_G1 = L.map ~f:R.g1_neg
@@ -631,64 +642,20 @@ let test () =
   let repetitions = 2 in  (* Bound on the number of times an attribute can appear as a Leaf node *)
   let and_bound = 4 in    (* Bound on the number of AND gates *)
   
-  let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
+  let mpk, msk = PredEncABE.setup (n_attrs * repetitions + and_bound + 1)   in
   let policy = (tall &. dark &. handsome) |. (phd &. cs) in
   let xM = matrix_from_policy ~nattrs:n_attrs ~rep:repetitions policy in
   let msg = R.gt_rand () in
 
-  let ct_x = ABE.enc mpk xM msg in
+  let ct_x = PredEncABE.enc mpk xM msg in
 
   let y = set_attributes ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
-  let sk_y = ABE.keyGen mpk msk y in
-  let msg' = ABE.dec mpk sk_y ct_x in
+  let sk_y = PredEncABE.keyGen mpk msk y in
+  let msg' = PredEncABE.dec mpk sk_y ct_x in
 
   let y' = set_attributes ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; math ] in
-  let sk_y' = ABE.keyGen mpk msk y' in
-  let msg'' = ABE.dec mpk sk_y' ct_x in
-(*
-  let module MyField = struct
-    type t = R.bn
-    let pp fmt i = F.fprintf fmt "%s" (R.bn_write_str i ~radix:10)
-    let add  = bn_add_mod
-    let neg  = bn_neg_mod
-    let mul  = bn_mul_mod
-    let inv  = zp_inverse
-    let one  = R.bn_one ()
-    let zero = R.bn_zero ()
-    let is_zero = bn_is_zero_mod
-    let rec ring_exp m n =
-      if n > 0 then mul m (ring_exp m (n-1))
-      else if n = 0 then one
-      else failwith "Negative exponent"
-    let ladd cs = L.fold_left ~f:(fun acc c -> add c acc) ~init:zero cs
-    let from_int i = R.bn_read_str (string_of_int i) ~radix:10
-    let equal = R.bn_equal
-    let compare = R.bn_cmp
-    let use_parens = false
-  end
-  in
-
-  let module SP = MakePoly(
-    struct
-      type t = string
-      let pp = pp_string
-      let equal = (=)
-      let compare = compare
-    end) (MyField)
-  in
-
-  let x = SP.(var "x") in
-  let y = SP.(var "y") in
-  let w = SP.(var "w") in
-  let target = SP.((ring_exp x 2) +@ ((from_int 3) *@ x *@ y) +@ ((from_int 2) *@ x *@ w) +@ ((from_int 7) *@ y *@ w)) in
-
-  F.printf "%a\n" SP.pp target;
-
-  let module Alg = PolyAlg.PolyAlg (SP) in
-
-  let m = Alg.find_matrix [x;y] [x;w] target in
-  F.printf "%a\n" (Util.pp_matrix SP.Coeffs.pp) m;
-*)
+  let sk_y' = PredEncABE.keyGen mpk msk y' in
+  let msg'' = PredEncABE.dec mpk sk_y' ct_x in
 
   let module Par = struct
     let par_n1 = 2
@@ -699,36 +666,14 @@ let test () =
   let mA = [[MyField.from_int 1; MyField.from_int 7]; [MyField.from_int 4; MyField.from_int 2]] in
   let pi i = MyField.from_int i in
   let setS = [MyField.from_int 1; MyField.from_int 2] in
-(*
-  let module PairE = Pair_Encoding(Par) in
-  let c,_ = PairE.encC (mA,pi) in
-  let setS = [MyField.from_int 1; MyField.from_int 2] in
-  let k,_ = PairE.encK setS in
-  F.printf "c = [%a]\n\n" (pp_list ",\n" P.pp) c;
-  F.printf "k = [%a]\n" (pp_list ",\n" P.pp) k;
-*)
-  let module PairE_ABE = Pair_Enc_ABE (Par) in
-(*
-  let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
-  let policy = (tall &. dark &. handsome) |. (phd &. cs) in
-  let xM = matrix_from_policy ~nattrs:n_attrs ~rep:repetitions policy in
-  let msg = R.gt_rand () in
 
-  let ct_x = ABE.enc mpk xM msg in
+  let module PairEncABE = PairEncABE (Par) in
 
-  let y = set_attributes ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
-  let sk_y = ABE.keyGen mpk msk y in
-  let msg' = ABE.dec mpk sk_y ct_x in
-
-  let y' = set_attributes ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; math ] in
-  let sk_y' = ABE.keyGen mpk msk y' in
-  let msg'' = ABE.dec mpk sk_y' ct_x in*)
-
-  let mpk, msk = PairE_ABE.setup in
+  let mpk, msk = PairEncABE.setup in
   let msg2 = R.gt_rand () in
-  let ct_x = PairE_ABE.enc mpk (mA,pi) msg2 in
-  let sk_y = PairE_ABE.keyGen mpk msk setS in
-  let msg2' = PairE_ABE.dec mpk sk_y ct_x in
+  let ct_x = PairEncABE.enc mpk (mA,pi) msg2 in
+  let sk_y = PairEncABE.keyGen mpk msk setS in
+  let msg2' = PairEncABE.dec mpk sk_y ct_x in
 
   assert (R.gt_equal msg2 msg2');
 

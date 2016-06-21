@@ -13,7 +13,7 @@ let pp_setup pp =
      begin match pp.pp_predicate with
      | Some BoolForm(repetitions, and_bound) ->
         let n_attrs = L.length pp.pp_attributes in
-        let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1) in
+        let mpk, msk = PredEncABE.setup (n_attrs * repetitions + and_bound + 1) in
         (mpk, msk)
      | _ -> assert false
      end
