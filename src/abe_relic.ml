@@ -5,7 +5,11 @@ open Abbrevs
 open Printf
 open Util
 open ABE
+open BoolForms
 open Eval
+open DualSystemGroup
+open Zp
+open PredicateEncodings
 
 let split_string_on_word string word =
   let n = String.length word in
@@ -40,6 +44,13 @@ let search_argument a =
   | _ -> raise Not_found
 
 let main =
+  init_relic();
+
+  let module DSG = (val (make_DualSystemGroup 10)) in
+  let module PE = Boolean_Formula_PE (G1) (G2) in
+
+  let module ABE = PredEncABE (DSG) (PE) in
+
   let man = F.sprintf "usage: %s\n" Sys.argv.(0) in
   if Array.length Sys.argv = 1 then
     output_string stderr man
@@ -95,7 +106,7 @@ let main =
          end
        in
        let y = set_attributes ~nattrs:(L.length pp.pp_attributes) ~rep y_list in
-       let sk_y =  PredEncABE.keyGen mpk msk y in
+       let sk_y =  ABE.keyGen mpk msk y in
        let (k0,k1), _ = sk_y in
 
        let k0_str = L.map k0 ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64) in
@@ -135,7 +146,7 @@ let main =
        let xM = matrix_from_policy ~nattrs ~rep (Eval.eval_policy pp.pp_attributes ev_policy) in
        let gt_msg = R.gt_rand () in
 
-       let ct_x = PredEncABE.enc mpk xM gt_msg in
+       let ct_x = ABE.enc mpk xM gt_msg in
        let (c0, c1, c), _ = ct_x in
        let password = SHA.sha256 (R.gt_write_bin ~compress gt_msg |> to_base64) in
        AES.encrypt ~key:password ~in_file:msg_file ~out_file;

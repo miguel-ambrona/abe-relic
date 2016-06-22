@@ -1,7 +1,7 @@
 open Core_kernel.Std
 open Abbrevs
 open Util
-open ABE
+open BoolForms
 
 module R = Relic
 

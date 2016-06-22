@@ -208,3 +208,12 @@ let list_to_matrix list n =
   in
   aux [] list
     
+let is_initialized = ref false
+
+let init_relic () =
+  if !is_initialized then ()
+  else
+    (assert (Relic.core_init () = Relic.sts_ok);
+     assert (Relic.pc_param_set_any () = Relic.sts_ok);
+     is_initialized := true
+    )

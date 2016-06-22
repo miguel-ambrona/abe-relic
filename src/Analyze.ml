@@ -2,18 +2,26 @@ open Core_kernel.Std
 open ABE
 open Eval
 open Abbrevs
+open BoolForms
+open DualSystemGroup
+open Zp
+open PredicateEncodings
 
 let f = function
   | Some t -> t
   | None   -> assert false
 
 let pp_setup pp =
+  let module DSG = (val (make_DualSystemGroup 10)) in
+  let module PE = Boolean_Formula_PE (G1) (G2) in
+
+  let module ABE = PredEncABE (DSG) (PE) in
   match pp.pp_scheme with
   | Some CP_ABE ->
      begin match pp.pp_predicate with
      | Some BoolForm(repetitions, and_bound) ->
         let n_attrs = L.length pp.pp_attributes in
-        let mpk, msk = PredEncABE.setup (n_attrs * repetitions + and_bound + 1) in
+        let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1) in
         (mpk, msk)
      | _ -> assert false
      end
