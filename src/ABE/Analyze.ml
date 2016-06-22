@@ -5,15 +5,15 @@ open Abbrevs
 open BoolForms
 open DualSystemG
 open Algebra
-open PredicateEncodings
+open PredEnc
 
 let f = function
   | Some t -> t
   | None   -> assert false
 
 let pp_setup pp =
-  let module DSG = DSG (G1) (G2) in
-  let module PE = Boolean_Formula_PE (G1) (G2) in
+  let module DSG = Hoeteck's_DSG in
+  let module PE = Boolean_Formula_PredEnc in
 
   let module ABE = PredEncABE (DSG) (PE) in
   match pp.pp_scheme with

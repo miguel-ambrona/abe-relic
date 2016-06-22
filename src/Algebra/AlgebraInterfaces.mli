@@ -3,12 +3,13 @@ open Abbrevs
 (* ** Groups *)
 module type Group = sig
   type t
-  val k : int
+(*  val k : int*)
   val add  : t -> t -> t
   val neg  : t -> t
   val mul  : t -> R.bn -> t
   val one  : t
   val zero : t
+  val samp : unit -> t
 end
 
 (* ** Fields *)

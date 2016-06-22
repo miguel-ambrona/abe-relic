@@ -9,7 +9,7 @@ open BoolForms
 open Eval
 open DualSystemG
 open Algebra
-open PredicateEncodings
+open PredEnc
 
 let split_string_on_word string word =
   let n = String.length word in
@@ -46,8 +46,8 @@ let search_argument a =
 let main =
 (*  init_relic();*)
 
-  let module DSG = DSG (G1) (G2) in
-  let module PE = Boolean_Formula_PE (G1) (G2) in
+  let module DSG = Hoeteck's_DSG in
+  let module PE = Boolean_Formula_PredEnc in
 
   let module ABE = PredEncABE (DSG) (PE) in
 

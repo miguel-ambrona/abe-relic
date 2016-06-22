@@ -53,6 +53,7 @@ module G1 = struct
   let mul t a = L.map t ~f:(fun g -> R.g1_mul g a)
   let one = mk_list (R.g1_gen ()) (k+1)
   let zero = mk_list (R.g1_infty ()) (k+1)
+  let samp = (fun () -> sample_list ~f:R.g1_rand (k+1))
 end
 
 module G2 = struct
@@ -63,4 +64,5 @@ module G2 = struct
   let mul t a = L.map t ~f:(fun g -> R.g2_mul g a)
   let one = mk_list (R.g2_gen ()) (k+1)
   let zero = mk_list (R.g2_infty ()) (k+1)
+  let samp = (fun () -> sample_list ~f:R.g2_rand (k+1))
 end

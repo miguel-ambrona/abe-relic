@@ -1,7 +1,6 @@
 open Abbrevs
 open Util
 open BoolForms
-open AlgebraInterfaces
 open Algebra
 
 (* ** Predicate Encodings *)
@@ -16,7 +15,7 @@ module type PredEnc = sig
   val rD : x -> y -> G2.t list -> G2.t
 end
 
-module Boolean_Formula_PE (G1 : Group) (G2 : Group) = struct
+module Boolean_Formula_PredEnc = struct
 
   (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
 

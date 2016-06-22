@@ -61,6 +61,8 @@ module type Poly = sig
 
   val mons : t -> monom list
   val coeff : t -> monom -> coeff
+    
+  val monom_of_monomPoly : t -> monom
   val coeff_in_field : t -> monom -> Coeffs.t
   val coeff_to_field : Coeffs.t -> coeff
 

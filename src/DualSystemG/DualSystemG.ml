@@ -1,14 +1,13 @@
 open Abbrevs
 open Util
-open AlgebraInterfaces
 open Algebra
 
-module DSG (G : Group) (H : Group) = struct
+(* ** Dual System Group proposed by Hoeteck *)
 
-  type g = G.t
-  type h = H.t
-  let k = G.k
-    
+module Hoeteck's_DSG = struct
+
+  let k = 10 (* G1.k*)
+
   let dual_system_pairing l1 l2 =
     let gt_list = L.map2_exn l1 l2 ~f:R.e_pairing in
     L.fold_left (L.tl_exn gt_list) ~init:(L.hd_exn gt_list) ~f:R.gt_mul

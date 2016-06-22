@@ -192,6 +192,11 @@ module MakePoly (V : Var) (C : Field) = struct
 
   let coeff f m = try list_assoc m f with Not_found -> C.zero
 
+  let monom_of_monomPoly p = 
+    let monomials = mons p in
+    if (L.length monomials) <> 1 then failwith "The polynomial must have a single monomial"
+    else L.hd_exn (mons p)
+
   let coeff_in_field = coeff
   let coeff_to_field a = a
 
