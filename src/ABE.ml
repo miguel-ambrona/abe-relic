@@ -2,9 +2,9 @@ open Poly
 open Core_kernel.Std
 open Abbrevs
 open Util
-open Zp
-open DualSystemGroup_Interface
-open DualSystemGroup
+open Algebra
+open DualSystemGInterface
+open DualSystemG
 open BoolForms
 open PredicateEncodings
 
@@ -23,7 +23,7 @@ module PredEncABE (DSG: DualSystemGroup) (PE : PredEnc) = struct
       
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
-    let s_list = sample_list ~f:samp_zp DSG.k in
+    let s_list = sample_list ~f:Zp.samp DSG.k in
     let g_list = DSG.sampG ~randomness:(Some s_list) pp in
     let g'T = DSG.sampGT ~randomness:(Some s_list) mu_msk in
     let c0 = L.hd_exn g_list in
@@ -53,7 +53,7 @@ module type PairEnc_Par = sig
   val par_n2 : int
   val par_T :  int
 end
-
+(*
 module MyField = struct
   type t = R.bn
   let pp fmt i = F.fprintf fmt "%s" (R.bn_write_str i ~radix:10)
@@ -74,14 +74,14 @@ module MyField = struct
   let compare = R.bn_cmp
   let use_parens = false
 end
-
+  *)
 module P = MakePoly(
   struct
     type t = string
     let pp = pp_string
     let equal = (=)
     let compare = compare
-  end) (MyField)
+  end) (Zp)
 
 let monom_of_monomP p = L.hd_exn (P.mons p)
 
@@ -246,7 +246,7 @@ module PairEncABE (DSG : DualSystemGroup) (Par : PairEnc_Par) = struct
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
     let c_polys, w2 = PairEnc.encC x in
-    let alpha = sample_list ~f:samp_zp n in
+    let alpha = sample_list ~f:Zp.samp n in
     let g0 = DSG.sampG ~randomness:(Some alpha) pp in
     let g_list = sample_list ~f:(fun () -> DSG.sampG pp) w2 in
 
@@ -404,11 +404,11 @@ let test () =
 
   let ct_x = ABE.enc mpk xM msg in
 
-  let y = set_attributes ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
+  let y = set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
   let sk_y = ABE.keyGen mpk msk y in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  let y' = set_attributes ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; math ] in
+  let y' = set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; math ] in
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
 
@@ -418,9 +418,9 @@ let test () =
     let par_T = 2
   end
   in
-  let mA = [[MyField.from_int 1; MyField.from_int 7]; [MyField.from_int 4; MyField.from_int 2]] in
-  let pi i = MyField.from_int i in
-  let setS = [MyField.from_int 1; MyField.from_int 2] in
+  let mA = [[Zp.from_int 1; Zp.from_int 7]; [Zp.from_int 4; Zp.from_int 2]] in
+  let pi i = Zp.from_int i in
+  let setS = [Zp.from_int 1; Zp.from_int 2] in
 
   let module PairEncABE = PairEncABE (DSG) (Par) in
 

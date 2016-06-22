@@ -5,6 +5,7 @@
 (* ** Imports *)
 open Abbrevs
 open Util
+open AlgebraInterfaces
 open PolyInterfaces
 
 (* ** Functor for Polynomials
@@ -203,25 +204,3 @@ module MakePoly (V : Var) (C : Field) = struct
   let ( -@) = minus
 
 end
-(*
-(* ** Module of polynomials with integer coefficients and string variables *)
-module SP = MakePoly(
-  struct
-    type t = string
-    let pp = pp_string
-    let equal = (=)
-    let compare = compare
-  end) (IntRing)
-
-
-(* ** Module of polynomials with integer coefficients and integer variables. *)
-module IP = MakePoly(
-  struct
-    type t = int
-    let pp fmt i = F.fprintf fmt "v_%i" i
-    let equal = (=)
-    let compare = compare
-  end) (IntRing)
-
-type ipoly = IP.t
-*)

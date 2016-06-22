@@ -3,8 +3,8 @@ open ABE
 open Eval
 open Abbrevs
 open BoolForms
-open DualSystemGroup
-open Zp
+open DualSystemG
+open Algebra
 open PredicateEncodings
 
 let f = function
@@ -12,7 +12,7 @@ let f = function
   | None   -> assert false
 
 let pp_setup pp =
-  let module DSG = (val (make_DualSystemGroup 10)) in
+  let module DSG = DSG (G1) (G2) in
   let module PE = Boolean_Formula_PE (G1) (G2) in
 
   let module ABE = PredEncABE (DSG) (PE) in
@@ -38,7 +38,7 @@ let sk_setup pp sk =
     | _ -> failwith "unknown predicate"
     end
   in
-  let y = set_attributes ~nattrs:(L.length pp.pp_attributes) ~rep y_list in
+  let y = set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:(L.length pp.pp_attributes) ~rep y_list in
   (f sk.sk_k0, f sk.sk_k1), y
   
 

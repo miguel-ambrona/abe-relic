@@ -7,8 +7,8 @@ open Util
 open ABE
 open BoolForms
 open Eval
-open DualSystemGroup
-open Zp
+open DualSystemG
+open Algebra
 open PredicateEncodings
 
 let split_string_on_word string word =
@@ -44,9 +44,9 @@ let search_argument a =
   | _ -> raise Not_found
 
 let main =
-  init_relic();
+(*  init_relic();*)
 
-  let module DSG = (val (make_DualSystemGroup 10)) in
+  let module DSG = DSG (G1) (G2) in
   let module PE = Boolean_Formula_PE (G1) (G2) in
 
   let module ABE = PredEncABE (DSG) (PE) in
@@ -105,7 +105,7 @@ let main =
          | _ -> failwith "unknown predicate"
          end
        in
-       let y = set_attributes ~nattrs:(L.length pp.pp_attributes) ~rep y_list in
+       let y = set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:(L.length pp.pp_attributes) ~rep y_list in
        let sk_y =  ABE.keyGen mpk msk y in
        let (k0,k1), _ = sk_y in
 
@@ -194,7 +194,7 @@ let main =
        let command = Format.sprintf "printf '%s' > %s" aes_ct "/tmp/aux.txt" in
        let _ = Unix.open_process command in
 
-       let gt_msg = PredEncABE.dec mpk sk_y ct_x in
+       let gt_msg = ABE.dec mpk sk_y ct_x in
        let password = SHA.sha256 (R.gt_write_bin ~compress gt_msg |> to_base64) in
        AES.decrypt ~key:password ~in_file:"/tmp/aux.txt" ~out_file
 

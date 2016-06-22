@@ -1,7 +1,8 @@
 open Abbrevs
 open Util
 open BoolForms
-open Zp
+open AlgebraInterfaces
+open Algebra
 
 (* ** Predicate Encodings *)
 

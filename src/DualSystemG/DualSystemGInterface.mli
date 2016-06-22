@@ -1,4 +1,4 @@
-open Zp
+open Algebra
 module R = Relic
 
 (* ** Dual System Groups *)

@@ -1,22 +1,11 @@
 open Abbrevs
 open LinAlg
 open Util
-open Zp
-module R = Relic
+open Algebra
 
 (* ** Functions for boolean formulas *)
 
-module GaussElim = LinAlg(struct
-  type t = R.bn
-  let pp fmt a = F.fprintf fmt "%s" (R.bn_write_str a ~radix:10)
-  let add = bn_add_mod
-  let neg = bn_neg_mod
-  let mul = bn_mul_mod
-  let inv = zp_inverse
-  let one = R.bn_one ()
-  let zero = R.bn_zero ()
-  let is_zero = bn_is_zero_mod
-end)  
+module GaussElim = LinAlg(Zp)
 
 type attribute = Att of int
 
@@ -64,9 +53,9 @@ let sort_matrix ?(rep = 1) matrix n_attrs =
 let matrix_from_policy ~nattrs ~rep p =
   sort_matrix ~rep (matrix_of_formula p) nattrs
   |> unzip1
-  |> L.map ~f:(L.map ~f:(fun i -> bn_read_str_mod (string_of_int i)))
+  |> L.map ~f:(L.map ~f:(fun i -> Zp.read_str (string_of_int i)))
   
-let set_attributes ~nattrs ~rep attrs =
+let set_attributes ~one ~zero ~nattrs ~rep attrs =
   let rec repeat output = function
     | [] -> output
     | a :: rest -> repeat (output @ (mk_list a rep)) rest
@@ -75,9 +64,9 @@ let set_attributes ~nattrs ~rep attrs =
     if k > nattrs then output
     else
       if L.exists attrs ~f:(function | Leaf(Att(i)) -> i = k | _ -> assert false) then
-        mk_bit_vector (output @ [ R.bn_one () ]) (k+1)
+        mk_bit_vector (output @ [ one ]) (k+1)
       else
-        mk_bit_vector (output @ [ R.bn_zero () ]) (k+1)
+        mk_bit_vector (output @ [ zero ]) (k+1)
   in
   repeat [] (mk_bit_vector [] 1)
 

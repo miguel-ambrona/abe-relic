@@ -4,7 +4,7 @@
 
 (* ** Imports *)
 open Abbrevs
-
+open AlgebraInterfaces
 
 (* ** Variables *)
 module type Var = sig
@@ -12,25 +12,6 @@ module type Var = sig
   val pp : F.formatter -> t -> unit
   val equal : t -> t -> bool
   val compare : t -> t -> int
-end
-
-(* ** Fields *)
-module type Field = sig
-  type t
-  val pp : F.formatter -> t -> unit
-  val add : t -> t -> t
-  val neg : t -> t
-  val mul : t -> t -> t
-  val inv : t -> t
-  val ring_exp : t -> int -> t
-  val one : t
-  val zero : t
-  val is_zero : t -> bool
-  val ladd : t list -> t
-  val from_int : int -> t
-  val equal : t -> t -> bool
-  val compare : t -> t -> int
-  val use_parens : bool
 end
 
 (* ** Polynomials *)
