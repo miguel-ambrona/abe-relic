@@ -1,11 +1,10 @@
 true: bin_annot, debug
 
 <src>: include
-<src/Algebra> or <src/DualSystemG> or <src/PairEnc> or <src/PredEnc>: include
-<src/Poly> or <src/Predicates> or <src/SymmetricCrypto>: include
+<src/Algebra> or <src/DualSystemG> or <src/PairEnc> or <src/PredEnc> or <src/Parser>: include
+<src/Poly> or <src/Predicates> or <src/SymmetricCrypto> or <src/ABE> or <src/Util>: include
 
-<src/Algebra/*> or <src/DualSystemG/*> or <src/PairEnc/*> or <src/PredEnc/*>:  package(relic)
+<src/Algebra/*> or <src/DualSystemG/*> or <src/PairEnc/*> or <src/PredEnc/*> or <src/ABE/*>:  package(relic)
+<src/Util/*>: package(relic), package(base64)
 
-<src/*>: package(core_kernel),\
-         package(relic),\
-         package(base64)
+<src/*>: package(core_kernel), package(relic), package(base64)

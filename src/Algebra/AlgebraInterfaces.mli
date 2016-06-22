@@ -1,4 +1,4 @@
-
+open Abbrevs
 
 (* ** Groups *)
 module type Group = sig
@@ -6,7 +6,7 @@ module type Group = sig
   val k : int
   val add  : t -> t -> t
   val neg  : t -> t
-  val mul  : t -> Relic.bn -> t
+  val mul  : t -> R.bn -> t
   val one  : t
   val zero : t
 end
@@ -14,7 +14,7 @@ end
 (* ** Fields *)
 module type Field = sig
   type t
-  val pp : Format.formatter -> t -> unit
+  val pp : F.formatter -> t -> unit
   val add : t -> t -> t
   val neg : t -> t
   val mul : t -> t -> t

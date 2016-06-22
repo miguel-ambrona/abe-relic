@@ -61,7 +61,7 @@ let main =
        let pp_file  = try search_argument "-pp"  with | Not_found -> failwith "missing argument -pp" in
        let mpk_file = try search_argument "-mpk" with | Not_found -> failwith "missing argument -mpk" in
        let msk_file = try search_argument "-msk" with | Not_found -> failwith "missing argument -msk" in
-       let pp = MyParse.pp_cmds (input_file pp_file) |> Eval.eval_pp_cmds in
+       let pp = Parse.pp_cmds (input_file pp_file) |> Eval.eval_pp_cmds in
        let mpk, msk = Analyze.pp_setup pp in
               
        let (g1_A, g1_WA, g2_B, g2_WB), mu_msk = mpk in
@@ -92,13 +92,13 @@ let main =
        let key_attrs = try search_argument "-attrs" with | Not_found -> failwith "missing argument -attrs" in
        let out_file   = try Some (search_argument "-out") with | Not_found -> None in
 
-       let eval_mpk = MyParse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
+       let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
        let pp, mpk = Analyze.mpk_setup eval_mpk in
 
-       let eval_msk = MyParse.msk_cmd (input_file msk_file) |> Eval.eval_msk_cmd in
+       let eval_msk = Parse.msk_cmd (input_file msk_file) |> Eval.eval_msk_cmd in
        let msk = eval_msk.msk_key in
 
-       let y_list = MyParse.sk_attrs key_attrs |> Eval.eval_sk_attrs pp.pp_attributes in
+       let y_list = Parse.sk_attrs key_attrs |> Eval.eval_sk_attrs pp.pp_attributes in
        let rep = 
          begin match pp.pp_predicate with
          | Some (BoolForm(n,_)) -> n
@@ -132,10 +132,10 @@ let main =
        let policy_str = try search_argument "-policy" with | Not_found -> failwith "missing argument -policy" in
        let out_file   = try Some (search_argument "-out") with | Not_found -> None in
 
-       let eval_mpk = MyParse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
+       let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
        let pp, mpk = Analyze.mpk_setup eval_mpk in
        
-       let ev_policy = MyParse.policy_cmd policy_str in
+       let ev_policy = Parse.policy_cmd policy_str in
        let nattrs = L.length pp.pp_attributes in
        let rep = 
          begin match pp.pp_predicate with
@@ -182,13 +182,13 @@ let main =
 
        let aes_ct, abe_ct = split_string_on_word (input_file ct_file) sep in
        
-       let eval_mpk = MyParse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
+       let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
        let pp, mpk = Analyze.mpk_setup eval_mpk in
 
-       let eval_sk = MyParse.sk_cmds (input_file sk_file) |> Eval.eval_sk_cmds in
+       let eval_sk = Parse.sk_cmds (input_file sk_file) |> Eval.eval_sk_cmds in
        let sk_y = Analyze.sk_setup pp eval_sk in
 
-       let eval_ct = MyParse.ct_cmds (sep ^ abe_ct) |> Eval.eval_ct_cmds in
+       let eval_ct = Parse.ct_cmds (sep ^ abe_ct) |> Eval.eval_ct_cmds in
        let ct_x = Analyze.ct_setup pp eval_ct in
 
        let command = Format.sprintf "printf '%s' > %s" aes_ct "/tmp/aux.txt" in

@@ -3,8 +3,6 @@ open Util
 open AlgebraInterfaces
 open Algebra
 
-module R = Relic
-
 module DSG (G : Group) (H : Group) = struct
 
   type g = G.t

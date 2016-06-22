@@ -1,5 +1,5 @@
 {
-  open MyParser
+  open Parser
   exception Error1 of string
 
   let unterminated_comment () =

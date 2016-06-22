@@ -1,10 +1,5 @@
-
-(* ** Imports *)
-
 open Abbrevs
 open Util
-
-module R = Relic
 
 let prime = ref None
 

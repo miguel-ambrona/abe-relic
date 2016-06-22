@@ -3,8 +3,6 @@ open Abbrevs
 open Util
 open BoolForms
 
-module R = Relic
-
 (* ** Interpret public parameters *)
 
 type scheme_type =

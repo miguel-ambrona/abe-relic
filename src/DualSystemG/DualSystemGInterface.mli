@@ -1,5 +1,5 @@
+open Abbrevs
 open Algebra
-module R = Relic
 
 (* ** Dual System Groups *)
 
