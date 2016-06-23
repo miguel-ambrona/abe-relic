@@ -7,54 +7,60 @@ open DualSystemG
 open BoolForms
 open PredEnc
 open PairEnc
+open AlgebraInterfaces
 
 (* ** ABE described in 'Improved Dual System ABE in Prime-Order Groups via Predicate Encodings' *)
 
-module PredEncABE (DSG: DualSystemGroup) (PE : PredEnc) = struct
+module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = struct
     
+  module DSG = DSG (B)
+  module PE = PE (B)
+
   let setup n =
     let pp, _sp = DSG.sampP n in (* _sp is only used in the proof of security *)
     let (g1_A, _, _, _) = pp in
-    let msk = sample_list ~f:R.g2_rand (DSG.k+1) in
-    let mu_msk = matrix_times_vector ~add:R.gt_mul ~mul:R.e_pairing (transpose_matrix g1_A) msk in
+    let msk = B.G2.samp () in
+    let mu_msk = L.map g1_A ~f:(fun g -> B.e g msk) in
     (pp, mu_msk), msk
       
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
-    let s_list = sample_list ~f:Zp.samp DSG.k in
+    let k = (L.length (B.G1.to_list B.G1.one)) - 1 in
+    let s_list = sample_list ~f:Zp.samp k in
     let g_list = DSG.sampG ~randomness:(Some s_list) pp in
     let g'T = DSG.sampGT ~randomness:(Some s_list) mu_msk in
     let c0 = L.hd_exn g_list in
     let c1 = PE.sE x (L.tl_exn g_list) in
-    let c' = R.gt_mul g'T m in
+    let c' = B.Gt.add g'T m in
     (c0, c1, c'), x
   
   let keyGen mpk msk y =
     let (pp, _mu_msk) = mpk in
     let h_list = DSG.sampH pp in
     let k0 = L.hd_exn h_list in
-    let k1 = L.map2_exn (PE.kE y msk) (PE.rE y (L.tl_exn h_list)) ~f:(L.map2_exn ~f:R.g2_add) in
+    let k1 = L.map2_exn (PE.kE y msk) (PE.rE y (L.tl_exn h_list)) ~f:B.G2.add in
     (k0, k1), y
   
   let dec _mpk sk_y ct_x =
     let (c0, c1, c'), x = ct_x in
     let (k0, k1), y = sk_y in
-    let e_g0_msk = R.gt_mul (DSG.dual_system_pairing c0 (PE.rD x y k1)) (R.gt_inv (DSG.dual_system_pairing (PE.sD x y c1) k0)) in
-    R.gt_mul c' (R.gt_inv e_g0_msk)        
+    let e_g0_msk = B.Gt.add (B.e c0 (PE.rD x y k1)) (B.Gt.neg (B.e (PE.sD x y c1) k0)) in
+    B.Gt.add c' (B.Gt.neg e_g0_msk)        
 
 end
 
 (* ** ABE described in 'A Study of Pair Encodings: Predicate Encryption in Prime Order Groups' *)
   
-module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
+module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) (B : BilinearGroup) = struct
 
+  module DSG = DSG (B)
   let n = PE.param
 
   let setup =
     let pp, _sp = DSG.sampP n in (* _sp is only used in the proof of security *)
     let (g1_A, _, _, _) = pp in
-    let msk = sample_list ~f:R.g2_rand (DSG.k+1) in
-    let mu_msk = matrix_times_vector ~add:R.gt_mul ~mul:R.e_pairing (transpose_matrix g1_A) msk in
+    let msk = B.G2.samp () in
+    let mu_msk = L.map g1_A ~f:(fun g -> B.e g msk) in
     (pp, mu_msk), msk
 
   let enc mpk x m =
@@ -68,13 +74,13 @@ module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
       L.map c_polys
         ~f:(fun c ->
           let zeta = P.coeff c PE.monom_s in
-          let ct = G1.mul (L.nth_exn g0 0) zeta in
+          let ct = B.G1.mul (L.nth_exn g0 0) zeta in
           let ct = 
             L.fold_left (list_range 1 (w2+1))
               ~init:ct
               ~f:(fun ct i ->
                 let eta = P.coeff c (L.nth_exn PE.monom_si (i-1)) in
-                G1.add ct (G1.mul (L.nth_exn (L.nth_exn g_list (i-1)) 0) eta)
+                B.G1.add ct (B.G1.mul (L.nth_exn (L.nth_exn g_list (i-1)) 0) eta)
               )
           in
           let ct = 
@@ -85,7 +91,7 @@ module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
                      |> P.monom_of_monomPoly
                 in
                 let theta = P.coeff c monomial in
-                G1.add ct (G1.mul (L.nth_exn g0 (j-1)) theta)
+                B.G1.add ct (B.G1.mul (L.nth_exn g0 (j-1)) theta)
               )
           in
           let ct =
@@ -99,7 +105,7 @@ module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
                          |> P.monom_of_monomPoly
                     in
                     let vartheta = P.coeff c monomial in
-                    G1.add ct (G1.mul (L.nth_exn (L.nth_exn g_list (i-1)) (j-1)) vartheta)
+                    B.G1.add ct (B.G1.mul (L.nth_exn (L.nth_exn g_list (i-1)) (j-1)) vartheta)
                   )
               )
           in
@@ -107,7 +113,7 @@ module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
         )
     in
 
-    let ct' = R.gt_mul m (DSG.sampGT ~randomness:(Some alpha) mu_msk) in
+    let ct' = B.Gt.add m (DSG.sampGT ~randomness:(Some alpha) mu_msk) in
 
     (ct_list, ct'), x
   
@@ -120,13 +126,13 @@ module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
       L.map k_polys
         ~f:(fun k ->
           let tau = P.coeff k PE.monom_alpha in
-          let sk = G2.mul msk tau in
+          let sk = B.G2.mul msk tau in
           let sk =
             L.fold_left (list_range 1 (m2+1))
               ~init:sk
               ~f:(fun sk i -> 
                 let upsilon = P.coeff k (L.nth_exn PE.monom_ri (i-1)) in
-                G2.add sk (G2.mul (L.nth_exn (L.nth_exn h_list (i-1)) 0) upsilon)
+                B.G2.add sk (B.G2.mul (L.nth_exn (L.nth_exn h_list (i-1)) 0) upsilon)
               )
           in
           let sk =
@@ -140,7 +146,7 @@ module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
                          |> P.monom_of_monomPoly
                     in
                     let phi = P.coeff k monomial in
-                    G2.add sk (G2.mul (L.nth_exn (L.nth_exn h_list (i-1)) (j-1)) phi)
+                    B.G2.add sk (B.G2.mul (L.nth_exn (L.nth_exn h_list (i-1)) (j-1)) phi)
                   )
               )
           in
@@ -157,18 +163,18 @@ module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) = struct
     let mE = PE.pair x y in
     let blinding_factor =
       L.fold_left (list_range 1 (m1+1))
-        ~init:(R.gt_unity ())
+        ~init:(B.Gt.one)
         ~f:(fun bf t ->
           L.fold_left (list_range 1 (w1+1))
             ~init:bf
             ~f:(fun bf l ->
               let mE_tl = (L.nth_exn (L.nth_exn mE (t-1)) (l-1)) |> P.coeff_to_field in
-              let sk_exp = G2.mul (L.nth_exn sk_list (t-1)) mE_tl in
-              R.gt_mul bf (DSG.dual_system_pairing (L.nth_exn ct_list (l-1)) sk_exp)
+              let sk_exp = B.G2.mul (L.nth_exn sk_list (t-1)) mE_tl in
+              B.Gt.add bf (B.e (L.nth_exn ct_list (l-1)) sk_exp)
             )          
         )
     in
-    R.gt_mul ct' (R.gt_inv blinding_factor)
+    B.Gt.add ct' (B.Gt.neg blinding_factor)
 
 end
 
@@ -189,12 +195,12 @@ let test_predEnc () =
   let module DSG = Hoeteck's_DSG in
   let module PE = Boolean_Formula_PredEnc in
 
-  let module ABE = PredEncABE (DSG) (PE) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
   
   let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
   let policy = (tall &. dark &. handsome) |. (phd &. cs) in
   let xM = matrix_from_policy ~nattrs:n_attrs ~rep:repetitions policy in
-  let msg = R.gt_rand () in
+  let msg = B.Gt.samp () in
 
   let ct_x = ABE.enc mpk xM msg in
 
@@ -207,7 +213,7 @@ let test_predEnc () =
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
 
-  if (R.gt_equal msg msg') && not(R.gt_equal msg msg'') then
+  if (B.Gt.equal msg msg') && not(B.Gt.equal msg msg'') then
     F.printf "Predicate Encodings ABE test succedded!\n"
   else failwith "Predicate Encodings test failed"
     
@@ -220,22 +226,22 @@ let test_pairEnc () =
     let par_n2 = 2
     let par_T = 2
   end
-  in  
-  
+  in
+
   let mA = [[Zp.from_int 1; Zp.from_int 7]; [Zp.from_int 4; Zp.from_int 2]] in
   let pi i = Zp.from_int i in
   let setS = [Zp.from_int 1; Zp.from_int 2] in
   
   let module PE = Boolean_Formula_PairEnc (Par) in
-  let module ABE = PairEncABE (DSG) (PE) in
+  let module ABE = PairEncABE (DSG) (PE) (B) in
   
   let mpk, msk = ABE.setup in
-  let msg = R.gt_rand () in
+  let msg = B.Gt.samp () in
   let ct_x = ABE.enc mpk (mA,pi) msg in
   let sk_y = ABE.keyGen mpk msk setS in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  if (R.gt_equal msg msg') then
+  if (B.Gt.equal msg msg') then
     F.printf "Pair Encodings ABE test succedded!\n"
   else failwith "Pair Encodings test failed"
    

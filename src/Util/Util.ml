@@ -34,6 +34,12 @@ let matrix_times_matrix ~add ~mul m1 m2 =
     
 let matrix_map ~f m = L.map m ~f:(L.map ~f)
 
+let rec equal_lists ~equal list1 list2 =
+  match list1, list2 with
+  | [], [] -> true
+  | a1 :: rest1, a2 :: rest2 -> (equal a1 a2) && (equal_lists ~equal rest1 rest2)
+  | _ -> false
+
 let list_range i j =
   let rec aux output k =
     if k >= j then output

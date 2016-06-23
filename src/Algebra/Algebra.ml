@@ -46,23 +46,70 @@ end
 let k = 10
 
 module G1 = struct
-  type t = R.g1 list
-  let k = k
-  let add = L.map2_exn ~f:R.g1_add
+  type atom = R.g1
+  let atom_gen = R.g1_gen ()
+  let atom_add = R.g1_add
+  let atom_mul = R.g1_mul
+
+  type t = atom list
+  let add = L.map2_exn ~f:atom_add
   let neg = L.map ~f:R.g1_neg
-  let mul t a = L.map t ~f:(fun g -> R.g1_mul g a)
+  let mul t a = L.map t ~f:(fun g -> atom_mul g a)
   let one = mk_list (R.g1_gen ()) (k+1)
   let zero = mk_list (R.g1_infty ()) (k+1)
   let samp = (fun () -> sample_list ~f:R.g1_rand (k+1))
+  let to_list g = g
+  let from_list g = g
+
+  let equal a b = Util.equal_lists ~equal:R.g1_equal (to_list a) (to_list b)
 end
 
 module G2 = struct
-  type t = R.g2 list
-  let k = k
-  let add = L.map2_exn ~f:R.g2_add
+  type atom = R.g2
+  let atom_gen = R.g2_gen ()
+  let atom_add = R.g2_add
+  let atom_mul = R.g2_mul
+
+  type t = atom list
+  let add = L.map2_exn ~f:atom_add
   let neg = L.map ~f:R.g2_neg
-  let mul t a = L.map t ~f:(fun g -> R.g2_mul g a)
+  let mul t a = L.map t ~f:(fun g -> atom_mul g a)
   let one = mk_list (R.g2_gen ()) (k+1)
   let zero = mk_list (R.g2_infty ()) (k+1)
   let samp = (fun () -> sample_list ~f:R.g2_rand (k+1))
+
+  let to_list h = h
+  let from_list h = h
+
+  let equal a b = Util.equal_lists ~equal:R.g2_equal (to_list a) (to_list b)
+end
+
+module Gt = struct
+  type t = R.gt
+  let add = R.gt_mul
+  let neg = R.gt_inv
+  let mul = R.gt_exp
+  let one = R.gt_unity ()
+  let zero = R.gt_zero ()
+  let samp = R.gt_rand
+
+  let equal = R.gt_equal
+
+  type atom = t
+  let atom_gen = R.gt_gen ()
+  let atom_add = add
+  let atom_mul = mul
+  let to_list h = [h]
+  let from_list h = L.hd_exn h
+end
+
+
+module B = struct
+  let p = R.g1_ord ()
+  module G1 = G1
+  module G2 = G2
+  module Gt = Gt
+  let e g1 g2 =
+    let gt_list = L.map2_exn (G1.to_list g1) (G2.to_list g2) ~f:R.e_pairing in
+    L.fold_left (L.tl_exn gt_list) ~init:(L.hd_exn gt_list) ~f:Gt.add
 end

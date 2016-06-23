@@ -15,7 +15,7 @@ let pp_setup pp =
   let module DSG = Hoeteck's_DSG in
   let module PE = Boolean_Formula_PredEnc in
 
-  let module ABE = PredEncABE (DSG) (PE) in
+  let module ABE = PredEncABE (DSG) (PE) (G1) (G2) in
   match pp.pp_scheme with
   | Some CP_ABE ->
      begin match pp.pp_predicate with
