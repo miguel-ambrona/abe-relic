@@ -4,7 +4,7 @@ open Eval
 open Abbrevs
 open BoolForms
 open DualSystemG
-open Algebra
+open MakeAlgebra
 open PredEnc
 
 let f = function
@@ -14,8 +14,9 @@ let f = function
 let pp_setup pp =
   let module DSG = Hoeteck's_DSG in
   let module PE = Boolean_Formula_PredEnc in
+  let module B = (val make_BilinearGroup 10) in
 
-  let module ABE = PredEncABE (DSG) (PE) (G1) (G2) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
   match pp.pp_scheme with
   | Some CP_ABE ->
      begin match pp.pp_predicate with

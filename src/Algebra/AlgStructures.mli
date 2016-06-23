@@ -3,10 +3,6 @@ open Abbrevs
 (* ** Groups *)
 module type Group = sig
   type atom
-  val atom_gen : atom
-  val atom_add : atom -> atom -> atom
-  val atom_mul : atom -> R.bn -> atom
-
   type t
   val add  : t -> t -> t
   val neg  : t -> t
@@ -17,6 +13,7 @@ module type Group = sig
 
   val equal : t -> t -> bool
 
+  val atom_from_dlog : R.bn -> atom
   val to_list : t -> atom list
   val from_list : atom list -> t
 end
@@ -30,7 +27,7 @@ module type Field = sig
   val mul : t -> t -> t
   val inv : t -> t
   val ring_exp : t -> int -> t
-  val one : t
+  val one  : t
   val zero : t
   val is_zero : t -> bool
   val ladd : t list -> t
@@ -43,7 +40,7 @@ module type Field = sig
   val read_str : string -> t
 end
 
-(* ** Bilinear Group *)
+(* ** Bilinear Groups *)
 module type BilinearGroup =
   sig
     val p  : R.bn

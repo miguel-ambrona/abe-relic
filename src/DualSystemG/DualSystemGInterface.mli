@@ -1,5 +1,5 @@
 open Abbrevs
-open AlgebraInterfaces
+open AlgStructures
 
 (* ** Dual System Groups *)
 

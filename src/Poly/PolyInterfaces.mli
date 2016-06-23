@@ -4,7 +4,7 @@
 
 (* ** Imports *)
 open Abbrevs
-open AlgebraInterfaces
+open AlgStructures
 
 (* ** Variables *)
 module type Var = sig

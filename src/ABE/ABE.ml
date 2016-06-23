@@ -1,13 +1,13 @@
 open Core_kernel.Std
 open Abbrevs
 open Util
-open Algebra
+open AlgStructures
+open MakeAlgebra
 open DualSystemGInterface
 open DualSystemG
 open BoolForms
 open PredEnc
 open PairEnc
-open AlgebraInterfaces
 
 (* ** ABE described in 'Improved Dual System ABE in Prime-Order Groups via Predicate Encodings' *)
 
@@ -51,7 +51,7 @@ end
 
 (* ** ABE described in 'A Study of Pair Encodings: Predicate Encryption in Prime Order Groups' *)
   
-module PairEncABE (DSG : DualSystemGroup) (PE : PairEnc) (B : BilinearGroup) = struct
+module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = struct
 
   module DSG = DSG (B)
   let n = PE.param
@@ -194,8 +194,11 @@ let test_predEnc () =
 
   let module DSG = Hoeteck's_DSG in
   let module PE = Boolean_Formula_PredEnc in
+  let module B = (val make_BilinearGroup 2) in
 
   let module ABE = PredEncABE (B) (DSG) (PE) in
+
+  let t1 = Unix.gettimeofday() in
   
   let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
   let policy = (tall &. dark &. handsome) |. (phd &. cs) in
@@ -213,8 +216,11 @@ let test_predEnc () =
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
 
+  let t2 = Unix.gettimeofday() in
+
   if (B.Gt.equal msg msg') && not(B.Gt.equal msg msg'') then
-    F.printf "Predicate Encodings ABE test succedded!\n"
+    F.printf "Predicate Encodings ABE test succedded!\n Time: %F seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Predicate Encodings test failed"
     
 let test_pairEnc () =
@@ -222,26 +228,34 @@ let test_pairEnc () =
   let module DSG = Hoeteck's_DSG in
 
   let module Par = struct
-    let par_n1 = 2
+    let par_n1 = 3
     let par_n2 = 2
     let par_T = 2
   end
   in
 
-  let mA = [[Zp.from_int 1; Zp.from_int 7]; [Zp.from_int 4; Zp.from_int 2]] in
-  let pi i = Zp.from_int i in
-  let setS = [Zp.from_int 1; Zp.from_int 2] in
+  let n = Zp.from_int in
+  let mA = [[n 1; n 0]; [n 1; n 1]; [n 1; n 2]] in
+  let pi i = n i in
+  let setS = [n 2; n 3] in
   
   let module PE = Boolean_Formula_PairEnc (Par) in
-  let module ABE = PairEncABE (DSG) (PE) (B) in
+  let module B = (val make_BilinearGroup PE.param) in
+
+  let module ABE = PairEncABE (B) (DSG) (PE) in
   
+  let t1 = Unix.gettimeofday() in
+
   let mpk, msk = ABE.setup in
   let msg = B.Gt.samp () in
   let ct_x = ABE.enc mpk (mA,pi) msg in
   let sk_y = ABE.keyGen mpk msk setS in
   let msg' = ABE.dec mpk sk_y ct_x in
 
+  let t2 = Unix.gettimeofday() in
+
   if (B.Gt.equal msg msg') then
-    F.printf "Pair Encodings ABE test succedded!\n"
+    F.printf "Pair Encodings ABE test succedded!\n Time: %F seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Pair Encodings test failed"
    

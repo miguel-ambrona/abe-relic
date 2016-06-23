@@ -1,11 +1,8 @@
 open Abbrevs
-open LinAlg
 open Util
-open Algebra
+open MakeAlgebra
 
 (* ** Functions for boolean formulas *)
-
-module GaussElim = LinAlg(Zp)
 
 type attribute = Att of int
 

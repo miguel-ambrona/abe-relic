@@ -1,7 +1,8 @@
 open Abbrevs
 open Util
-open BoolForms
-open AlgebraInterfaces
+open LinAlg
+open AlgStructures
+open MakeAlgebra
 
 (* ** Predicate Encodings *)
 
@@ -20,6 +21,8 @@ module type PredEnc =
 module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
 
   (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
+
+  module GaussElim = LinAlg(Zp)
 
   type x = R.bn list list
   type y = R.bn list

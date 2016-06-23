@@ -1,7 +1,7 @@
 open Poly
 open Abbrevs
 open Util
-open Algebra
+open MakeAlgebra
 
 
 (* ** Pair Encodings *)

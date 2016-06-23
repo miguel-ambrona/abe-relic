@@ -5,7 +5,7 @@
 (* ** Imports *)
 open Abbrevs
 open Util
-open AlgebraInterfaces
+open AlgStructures
 open PolyInterfaces
 
 (* ** Functor for Polynomials

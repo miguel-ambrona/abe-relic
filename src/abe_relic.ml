@@ -8,7 +8,7 @@ open ABE
 open BoolForms
 open Eval
 open DualSystemG
-open Algebra
+open MakeAlgebra
 open PredEnc
 
 let split_string_on_word string word =
@@ -49,7 +49,7 @@ let main =
   let module DSG = Hoeteck's_DSG in
   let module PE = Boolean_Formula_PredEnc in
 
-  let module ABE = PredEncABE (DSG) (PE) (G1) (G2) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let man = F.sprintf "usage: %s\n" Sys.argv.(0) in
   if Array.length Sys.argv = 1 then
