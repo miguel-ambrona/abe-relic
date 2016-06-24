@@ -54,6 +54,7 @@ end
 module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = struct
 
   module DSG = DSG (B)
+  let k = L.length (B.G1.to_list B.G1.one) - 1
   let n = PE.param
 
   let setup =
@@ -66,7 +67,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
     let c_polys, w2 = PE.encC x in
-    let alpha = sample_list ~f:Zp.samp n in
+    let alpha = sample_list ~f:Zp.samp k in
     let g0 = DSG.sampG ~randomness:(Some alpha) pp in
     let g_list = sample_list ~f:(fun () -> DSG.sampG pp) w2 in
 
@@ -161,57 +162,63 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
     let w1 = L.length ct_list in
     let m1 = L.length sk_list in
     let mE = PE.pair x y in
-    let blinding_factor =
-      L.fold_left (list_range 1 (m1+1))
-        ~init:(B.Gt.one)
-        ~f:(fun bf t ->
-          L.fold_left (list_range 1 (w1+1))
-            ~init:bf
-            ~f:(fun bf l ->
-              let mE_tl = (L.nth_exn (L.nth_exn mE (t-1)) (l-1)) |> P.coeff_to_field in
-              let sk_exp = B.G2.mul (L.nth_exn sk_list (t-1)) mE_tl in
-              B.Gt.add bf (B.e (L.nth_exn ct_list (l-1)) sk_exp)
-            )          
-        )
-    in
-    B.Gt.add ct' (B.Gt.neg blinding_factor)
+    match mE with
+    | None -> B.Gt.zero
+    | Some mE ->
+       let blinding_factor =
+         L.fold_left (list_range 1 (m1+1))
+           ~init:(B.Gt.one)
+           ~f:(fun bf t ->
+             L.fold_left (list_range 1 (w1+1))
+               ~init:bf
+               ~f:(fun bf l ->
+                 let mE_tl = (L.nth_exn (L.nth_exn mE (t-1)) (l-1)) |> P.coeff_to_field in
+                 let sk_exp = B.G2.mul (L.nth_exn sk_list (t-1)) mE_tl in
+                 B.Gt.add bf (B.e (L.nth_exn ct_list (l-1)) sk_exp)
+               )          
+           )
+       in
+       B.Gt.add ct' (B.Gt.neg blinding_factor)
 
 end
 
 (* ** Test *)
 
+let tall     = Leaf(Att(2))
+let dark     = Leaf(Att(1))
+let handsome = Leaf(Att(3))
+let phd      = Leaf(Att(4))
+let cs       = Leaf(Att(5))
+let maths     = Leaf(Att(6))
+
+let policy = (tall &. dark &. handsome) |. (phd &. cs)
+
+module DSG = Hoeteck's_DSG
+module B = (val make_BilinearGroup 2)
+
+let bn_of_int i = Zp.read_str (string_of_int i)
+
 let test_predEnc () =
-  let tall     = Leaf(Att(1)) in
-  let dark     = Leaf(Att(2)) in
-  let handsome = Leaf(Att(3)) in
-  let phd      = Leaf(Att(4)) in
-  let cs       = Leaf(Att(5)) in
-  let math     = Leaf(Att(6)) in
 
-  let n_attrs = 6 in      (* Number of attributes *)
-  let repetitions = 2 in  (* Bound on the number of times an attribute can appear as a Leaf node *)
-  let and_bound = 4 in    (* Bound on the number of AND gates *)
+  let n_attrs = 6 in      (* Global number of attributes *)
+  let repetitions = 1 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
+  let and_bound = 3 in    (* Bound on the number of AND gates *)
 
-  let module DSG = Hoeteck's_DSG in
-  let module PE = Boolean_Formula_PredEnc in
-  let module B = (val make_BilinearGroup 2) in
-
-  let module ABE = PredEncABE (B) (DSG) (PE) in
+  let module ABE = PredEncABE (B) (DSG) (Boolean_Formula_PredEnc) in
 
   let t1 = Unix.gettimeofday() in
   
   let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
-  let policy = (tall &. dark &. handsome) |. (phd &. cs) in
-  let xM = matrix_from_policy ~nattrs:n_attrs ~rep:repetitions policy in
+  let xM = pred_enc_matrix_from_policy ~nattrs:n_attrs ~rep:repetitions ~t_of_int:bn_of_int policy in
   let msg = B.Gt.samp () in
 
   let ct_x = ABE.enc mpk xM msg in
 
-  let y = set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
+  let y = pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
   let sk_y = ABE.keyGen mpk msk y in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  let y' = set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; math ] in
+  let y' = pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; maths ] in
 
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
@@ -225,36 +232,34 @@ let test_predEnc () =
     
 let test_pairEnc () =
   
-  let module DSG = Hoeteck's_DSG in
-
   let module Par = struct
-    let par_n1 = 3
-    let par_n2 = 2
-    let par_T = 2
+    let par_n1 = 5    (* Bound on the number of Leaf nodes in the boolean formula*)
+    let par_n2 = 3    (* Bound on the number of AND gates *)
+    let par_T = 4     (* Bound on the number of attributes in a key *)
   end
-  in
-
-  let n = Zp.from_int in
-  let mA = [[n 1; n 0]; [n 1; n 1]; [n 1; n 2]] in
-  let pi i = n i in
-  let setS = [n 2; n 3] in
-  
-  let module PE = Boolean_Formula_PairEnc (Par) in
-  let module B = (val make_BilinearGroup PE.param) in
-
-  let module ABE = PairEncABE (B) (DSG) (PE) in
+  in  
+  let module ABE = PairEncABE (B) (DSG) (Boolean_Formula_PairEnc (Par)) in
   
   let t1 = Unix.gettimeofday() in
+
+  let mA, pi = pair_enc_matrix_of_policy ~n1:Par.par_n1 ~n2:Par.par_n2 ~t_of_int:bn_of_int policy in
 
   let mpk, msk = ABE.setup in
   let msg = B.Gt.samp () in
   let ct_x = ABE.enc mpk (mA,pi) msg in
+
+  let setS = pair_enc_set_attributes ~t_of_int:bn_of_int [ phd; cs ] in
   let sk_y = ABE.keyGen mpk msk setS in
   let msg' = ABE.dec mpk sk_y ct_x in
 
+  let setS' = pair_enc_set_attributes ~t_of_int:bn_of_int [ tall; dark; maths; cs ] in
+
+  let sk_y' = ABE.keyGen mpk msk setS' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
+
   let t2 = Unix.gettimeofday() in
 
-  if (B.Gt.equal msg msg') then
+  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
     F.printf "Pair Encodings ABE test succedded!\n Time: %F seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Pair Encodings test failed"

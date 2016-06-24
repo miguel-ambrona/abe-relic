@@ -33,7 +33,7 @@ module type PairEnc = sig
   val param : int
   val encC : x -> P.t list * int
   val encK : y -> P.t list * int
-  val pair : x -> y -> P.Coeffs.t list list
+  val pair : x -> y -> (P.Coeffs.t list list) option
 end
 
 module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
@@ -167,6 +167,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
 
     let requirement p = list_empty_intersection ~equal:P.mon_equal (P.mons p) forbidden in
     
-    Alg.find_matrix ~requirement k c target
+    try Some (Alg.find_matrix ~requirement k c target) with
+    | Not_found -> None
 
 end
