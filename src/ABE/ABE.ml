@@ -9,6 +9,35 @@ open BoolForms
 open PredEnc
 open PairEnc
 
+(* ** Attribute-Based Encryption *)
+
+module type ABE =
+  sig
+    type mpk
+    type msk
+    type x
+    type y
+    type msg
+    type sk
+    type ct
+
+    type x_input
+    type y_input
+
+    val setup  : ?n:int -> unit -> mpk * msk
+    val enc    : mpk -> x -> msg -> ct
+    val keyGen : mpk -> msk -> y -> sk
+    val dec    : mpk -> sk -> ct -> msg
+
+    val set_x : x_input -> x
+    val set_y : y_input -> y
+
+    val string_of_mpk : mpk -> string
+    val string_of_msk : msk -> string
+    val mpk_of_string : string -> mpk
+    val msk_of_string : string -> msk
+end
+
 (* ** ABE described in 'Improved Dual System ABE in Prime-Order Groups via Predicate Encodings' *)
 
 module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = struct
@@ -16,12 +45,19 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
   module DSG = DSG (B)
   module PE = PE (B)
 
-  let setup n =
-    let pp, _sp = DSG.sampP n in (* _sp is only used in the proof of security *)
-    let (g1_A, _, _, _) = pp in
+  type mpk = DSG.pp * DSG.img_mu
+  type msk = B.G2.t
+  type x   = PE.x
+  type y   = PE.y
+  type msg = B.Gt.t
+  type sk  = (B.G2.t * B.G2.t list) * y
+  type ct  = (B.G1.t * B.G1.t list * B.Gt.t) * x
+
+  let setup ?(n = -1) () =
+    let n = if n <= 0 then failwith "ABE setup: wrong parameter or not provided" else n in
+    let mu, (pp, _sp) = DSG.sampP n in (* _sp is only used in the proof of security *)
     let msk = B.G2.samp () in
-    let mu_msk = L.map g1_A ~f:(fun g -> B.e g msk) in
-    (pp, mu_msk), msk
+    (pp, mu msk), msk
       
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
@@ -47,6 +83,31 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
     let e_g0_msk = B.Gt.add (B.e c0 (PE.rD x y k1)) (B.Gt.neg (B.e (PE.sD x y c1) k0)) in
     B.Gt.add c' (B.Gt.neg e_g0_msk)        
 
+  type x_input = PE.x_input
+  type y_input = PE.y_input
+
+  let set_x = PE.set_x
+  let set_y = PE.set_y
+
+      
+  (* *** String conversions *)
+
+  let sep = "&"
+
+  let string_of_mpk mpk =
+    let (pp, img_mu) = mpk in
+    (DSG.string_of_pp pp) ^ sep ^ (DSG.string_of_img_mu img_mu)
+
+  let string_of_msk msk = B.G2.to_string msk
+
+  let mpk_of_string str =
+    match String.split ~on:(Char.of_string sep) str with
+    | str_pp :: str_img_mu :: [] ->
+       (DSG.pp_of_string str_pp, DSG.img_mu_of_string str_img_mu)
+    | _ -> failwith "invalid string"
+
+  let msk_of_string str = B.G2.of_string str
+      
 end
 
 (* ** ABE described in 'A Study of Pair Encodings: Predicate Encryption in Prime Order Groups' *)
@@ -54,15 +115,23 @@ end
 module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = struct
 
   module DSG = DSG (B)
+
+(*  type mpk = DSG.pp * DSG.img_mu
+  type msk = B.G2.t
+  type x   = PE.x
+  type y   = PE.y
+  type msg = B.Gt.t
+  type sk  = (B.G2.t * B.G2.t list) * y
+  type ct  = (B.G1.t * B.G1.t list * B.Gt.t) * x
+*)
+
   let k = L.length (B.G1.to_list B.G1.one) - 1
   let n = PE.param
 
-  let setup =
-    let pp, _sp = DSG.sampP n in (* _sp is only used in the proof of security *)
-    let (g1_A, _, _, _) = pp in
+  let setup _ =
+    let mu, (pp, _sp) = DSG.sampP n in (* _sp is only used in the proof of security *)
     let msk = B.G2.samp () in
-    let mu_msk = L.map g1_A ~f:(fun g -> B.e g msk) in
-    (pp, mu_msk), msk
+    (pp, mu msk), msk
 
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
@@ -208,7 +277,7 @@ let test_predEnc () =
 
   let t1 = Unix.gettimeofday() in
   
-  let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1)   in
+  let mpk, msk = ABE.setup ~n:(n_attrs * repetitions + and_bound + 1) () in
   let xM = pred_enc_matrix_from_policy ~nattrs:n_attrs ~rep:repetitions ~t_of_int:bn_of_int policy in
   let msg = B.Gt.samp () in
 
@@ -244,7 +313,7 @@ let test_pairEnc () =
 
   let mA, pi = pair_enc_matrix_of_policy ~n1:Par.par_n1 ~n2:Par.par_n2 ~t_of_int:bn_of_int policy in
 
-  let mpk, msk = ABE.setup in
+  let mpk, msk = ABE.setup () in
   let msg = B.Gt.samp () in
   let ct_x = ABE.enc mpk (mA,pi) msg in
 

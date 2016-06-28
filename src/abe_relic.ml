@@ -44,10 +44,9 @@ let search_argument a =
   | _ -> raise Not_found
 
 let main =
-(*  init_relic();*)
-
   let module DSG = Hoeteck's_DSG in
   let module PE = Boolean_Formula_PredEnc in
+  let module B = (val make_BilinearGroup 2) in
 
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
@@ -62,27 +61,17 @@ let main =
        let mpk_file = try search_argument "-mpk" with | Not_found -> failwith "missing argument -mpk" in
        let msk_file = try search_argument "-msk" with | Not_found -> failwith "missing argument -msk" in
        let pp = Parse.pp_cmds (input_file pp_file) |> Eval.eval_pp_cmds in
-       let mpk, msk = Analyze.pp_setup pp in
-              
-       let (g1_A, g1_WA, g2_B, g2_WB), mu_msk = mpk in
-       let g1_A_str = L.map g1_A ~f:(L.map ~f:(fun g -> R.g1_write_bin ~compress g |> to_base64)) in
-       let g1_WA_str = L.map g1_WA ~f:(L.map ~f:(L.map ~f:(fun g -> R.g1_write_bin ~compress g |> to_base64)))in
-       let g2_B_str = L.map g2_B ~f:(L.map ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64)) in
-       let g2_WB_str = L.map g2_WB ~f:(L.map ~f:(L.map ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64)))in
-       let mu_msk_str = L.map mu_msk ~f:(fun g -> R.gt_write_bin ~compress g |> to_base64) in
 
+       let module ABE = (val Analyze.abe_from_pp pp) in
+       let n = Analyze.get_setup_size pp in
+       let mpk, msk = ABE.setup ~n () in
+              
        let out_mpk_file = open_out mpk_file in
-       fprintf out_mpk_file "%s\n" (Eval.string_of_pp pp);
-       fprintf out_mpk_file "A = %s.\n\n" (list_list_to_string g1_A_str);
-       fprintf out_mpk_file "WA = %s.\n\n" (list_list_list_to_string g1_WA_str);
-       fprintf out_mpk_file "B = %s.\n\n" (list_list_to_string g2_B_str);
-       fprintf out_mpk_file "WB = %s.\n\n" (list_list_list_to_string g2_WB_str);
-       fprintf out_mpk_file "mu = %s.\n" (list_to_string mu_msk_str);
+       fprintf out_mpk_file "%s\n" (ABE.string_of_mpk mpk);
        let _ = close_out_noerr out_mpk_file in
 
-       let msk_str = L.map msk ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64) in
        let out_msk_file = open_out msk_file in
-       fprintf out_msk_file "msk = %s.\n" (list_to_string msk_str);
+       fprintf out_mpk_file "%s\n" (ABE.string_of_msk msk);
        let _ = close_out_noerr out_msk_file in
        ()
 
@@ -93,20 +82,20 @@ let main =
        let out_file   = try Some (search_argument "-out") with | Not_found -> None in
 
        let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
-       let pp, mpk = Analyze.mpk_setup eval_mpk in
-
        let eval_msk = Parse.msk_cmd (input_file msk_file) |> Eval.eval_msk_cmd in
-       let msk = eval_msk.msk_key in
 
-       let y_list = Parse.sk_attrs key_attrs |> Eval.eval_sk_attrs pp.pp_attributes in
-       let rep = 
-         begin match pp.pp_predicate with
-         | Some (BoolForm(n,_)) -> n
-         | _ -> failwith "unknown predicate"
-         end
+       let pp = eval_mpk.mpk_pp in
+
+       let module ABE = (val Analyze.abe_from_pp pp) in
+       let mpk = ABE.mpk_of_string (get_option_exn eval_mpk.mpk_key) in
+       let msk = ABE.msk_of_string (get_option_exn eval_msk.msk_key) in
+
+       let eval_sk = Parse.sk_attrs key_attrs |> Eval.eval_sk_attrs pp.pp_attributes in
+       let y = match pp.pp_scheme with
+         | Some CP_ABE -> Analyze.set_attributes ~one:Zp.one ~zero:Zp.zero pp eval_sk
+         | None -> failwith "scheme not provided"
        in
-       let y = set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:(L.length pp.pp_attributes) ~rep y_list in
-       let sk_y =  ABE.keyGen mpk msk y in
+       let sk_y = ABE.keyGen mpk msk y in
        let (k0,k1), _ = sk_y in
 
        let k0_str = L.map k0 ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64) in

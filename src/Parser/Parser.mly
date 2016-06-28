@@ -20,22 +20,15 @@
 %token REPETITIONS
 %token AND_GATES
 
-%token K0
-%token K1
+%token KEY
+%token CT
+%token MPK
+%token MSK
 
 %token POLICY
-%token C0
-%token C1
-%token CT
+
 %token BEGIN_CT
 %token END_CT
-
-%token A_MATRIX
-%token WA_MATRIX
-%token B_MATRIX
-%token WB_MATRIX
-%token MU_MSK
-%token MSK
 
 %token <int> INT
 %token <string> NAME
@@ -88,26 +81,13 @@ pp_cmd :
 
 pp_cmds : cs = list(pp_cmd); EOF; { cs };
 
-group_list :
-| LBRACK; l = separated_list(COMMA, NAME); RBRACK; { l }
-
-group_list_list :
-| LBRACK; l = separated_list(COMMA, group_list); RBRACK; { l }
-
-group_list_list_list :
-| LBRACK; l = separated_list(COMMA, group_list_list); RBRACK; { l }
-
 mpk_cmd :
-| A_MATRIX; EQ; l = group_list_list; DOT; { A_matrix(l) }
-| WA_MATRIX; EQ; l = group_list_list_list; DOT; { WA_matrix(l) }
-| B_MATRIX; EQ; l = group_list_list; DOT; { B_matrix(l) }
-| WB_MATRIX; EQ; l = group_list_list_list; DOT; { WB_matrix(l) }
-| MU_MSK; EQ; l = group_list; DOT; { Mu_msk(l) }
-| cmd = pp_cmd { PP(cmd) }
+| MPK; EQ; s = NAME; DOT;  { Mpk(s) }
+| cmd = pp_cmd             { Pp(cmd) }
 
 mpk_cmds : cs = list(mpk_cmd); EOF; { cs };
 
-msk_cmd : MSK; EQ; l = group_list; DOT; { Msk(l) }
+msk_cmd : MSK; EQ; s = NAME; DOT; { Msk(s) }
 
 policy :
 | s = NAME;                      { Eval_leaf(s) }
@@ -121,15 +101,13 @@ sk_attrs : l = name_list; EOF; { l }
 
 sk_cmd :
 | ATTRIBUTES; EQ; l = name_list; DOT;  { SK_Attrs(l) }
-| K0; EQ; l = group_list; DOT;         { SK_K0(l) }
-| K1; EQ; l = group_list_list; DOT;    { SK_K1(l) }
+| KEY; EQ; s = NAME; DOT;              { SK_Key(s) }
+
 
 sk_cmds : cs = list(sk_cmd); EOF; { cs }
 
 ct_cmd :
 | POLICY; EQ; p = policy; DOT;          { CT_Policy(p) }
-| C0; EQ; l = group_list; DOT;          { CT_C0(l) }
-| C1; EQ; l = group_list_list; DOT;     { CT_C1(l) }
-| CT; EQ; s = NAME; DOT;                { CT_CT(s) }
+| CT; EQ; s = NAME; DOT;                { CT_Cipher(s) }
 
 ct_cmds : BEGIN_CT; cs = list(ct_cmd); END_CT; { cs }

@@ -3,6 +3,7 @@ open Util
 open LinAlg
 open AlgStructures
 open MakeAlgebra
+open BoolForms
 
 (* ** Predicate Encodings *)
 
@@ -16,6 +17,11 @@ module type PredEnc =
       val kE : y -> B.G2.t -> B.G2.t list
       val sD : x -> y -> B.G1.t list -> B.G1.t
       val rD : x -> y -> B.G2.t list -> B.G2.t
+
+      type x_input
+      type y_input
+      val set_x : x_input -> x
+      val set_y : y_input -> y
     end
 
 module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
@@ -81,4 +87,14 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
            (L.fold_left (L.tl_exn a_d)
               ~init:(L.hd_exn a_d)
               ~f:B.G2.add)
+
+  type x_input = ~nattrs:int * int * bool_formula
+  type y_input = int * int * bool_formula list
+
+  let set_x (nattrs, rep, policy) =
+    pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int:(fun i -> R.bn_read_str (string_of_int i) ~radix:10) policy
+      
+  let set_y (nattrs, rep, attrs) =
+    pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep attrs
+
 end

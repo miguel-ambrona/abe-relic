@@ -47,6 +47,10 @@ let list_range i j =
   in
   aux [] i
 
+let g1_write = R.g1_write_bin ~compress:false
+let g2_write = R.g2_write_bin ~compress:false
+let gt_write = R.gt_write_bin ~compress:false
+
 let list_empty_intersection ~equal list1 list2 =
   let rec aux = function
     | [] -> true
@@ -106,32 +110,25 @@ let position_in_list el list =
   in
   aux 0
 
-let list_to_string list =
-  let del = ", " in
+let list_to_string ~sep list =
   let rec aux output = function
     | [] -> output
     | s :: [] -> output ^ s
-    | s :: rest -> aux (output ^ s ^ del) rest
+    | s :: rest -> aux (output ^ s ^ sep) rest
   in
-  "[" ^ (aux "" list) ^ "]"
+  aux "" list
 
-let list_list_to_string list =
-  let del = ", " in
+let list_list_to_string ~sep1 ~sep2 list =
   let rec aux output = function
     | [] -> output
-    | l :: [] -> output ^ (list_to_string l)
-    | l :: rest -> aux (output ^ (list_to_string l) ^ del) rest
+    | l :: [] -> output ^ (list_to_string ~sep:sep2 l)
+    | l :: rest -> aux (output ^ (list_to_string ~sep:sep2 l) ^ sep1) rest
   in
-  "[" ^ (aux "" list) ^ "]"
+  (aux "" list)
 
-let list_list_list_to_string list =
-  let del = ", " in
-  let rec aux output = function
-    | [] -> output
-    | l :: [] -> output ^ (list_list_to_string l)
-    | l :: rest -> aux (output ^ (list_list_to_string l) ^ del) rest
-  in
-  "[" ^ (aux "" list) ^ "]"
+let get_option_exn = function
+  | Some a -> a
+  | None -> assert false
 
 let to_base64 ?(split = false) string =
   let string64 = B64.encode string in

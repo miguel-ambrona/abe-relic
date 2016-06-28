@@ -36,21 +36,15 @@ rule lex = parse
   | "and-gates"       { AND_GATES }
   | "policy"          { POLICY }
 
-  | "k0"  { K0 }
-  | "k1"  { K1 }
 
-  | "c0"  { C0 }
-  | "c1"  { C1 }
-  | "c*"  { CT }
+
+  | "mpk" { MPK }
+  | "msk" { MSK }
+  | "key" { KEY }
+  | "ct"  { CT }
+
   | "___BEGIN_ABE_CIPHERTEXT___"   { BEGIN_CT }
   | "___END_ABE_CIPHERTEXT___"     { END_CT }
-
-  | "A"   { A_MATRIX }
-  | "WA"  { WA_MATRIX }
-  | "B"   { B_MATRIX }
-  | "WB"  { WB_MATRIX }
-  | "mu"  { MU_MSK }
-  | "msk" { MSK }
 
   | '-'?['0'-'9']['0'-'9']* as s { INT(int_of_string(s)) }
   | base64* as s { NAME(s)}

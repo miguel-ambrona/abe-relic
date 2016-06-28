@@ -6,13 +6,16 @@ open AlgStructures
 module type DualSystemGroup =
   functor (B : BilinearGroup) ->
     sig
-      val k : int
-(*      val dual_system_pairing : B.G1.t -> B.G2.t -> B.Gt.t*)
-      val samp_Dk : int -> R.bn list list * R.bn list
-      val sampP   : int -> (B.G1.t list * B.G1.t list list *
-                            B.G2.t list * B.G2.t list list) *
-                           (R.bn list * R.bn list * R.bn list list list)
-      val sampGT  : ?randomness:(R.bn list option) -> B.Gt.t list -> B.Gt.t
-      val sampG   : ?randomness:(R.bn list option) -> B.G1.t list * B.G1.t list list * 'a * 'b -> B.G1.t list
-      val sampH   : 'a * 'b * B.G2.t list * B.G2.t list list -> B.G2.t list
+      type pp
+      type sp
+      type img_mu
+      val sampP   : int -> (B.G2.t -> img_mu) * (pp * sp)
+      val sampGT  : ?randomness:(R.bn list option) -> img_mu -> B.Gt.t
+      val sampG   : ?randomness:(R.bn list option) -> pp -> B.G1.t list
+      val sampH   : ?randomness:(R.bn list option) -> pp -> B.G2.t list
+
+      val string_of_pp     : pp -> string
+      val string_of_img_mu : img_mu -> string
+      val pp_of_string     : string -> pp
+      val img_mu_of_string : string -> img_mu
     end

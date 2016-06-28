@@ -6,11 +6,38 @@ open BoolForms
 open DualSystemG
 open MakeAlgebra
 open PredEnc
+open AlgStructures
 
 let f = function
   | Some t -> t
   | None   -> assert false
 
+let abe_from_pp pp =
+  let module B = (val make_BilinearGroup 2) in
+  let module DSG = Hoeteck's_DSG in
+  match pp.pp_scheme, pp.pp_encoding, pp.pp_predicate with
+  | Some CP_ABE, Some PredicateEncoding, Some BoolForm(_,_) -> 
+     (module PredEncABE (B) (DSG) (Boolean_Formula_PredEnc) : ABE)
+  | None, _, _ -> failwith "scheme not provided"
+  | _, None, _ -> failwith "encoding not provided"
+  | _, _, None -> failwith "predicate not provided"
+
+let get_setup_size pp =
+  match pp.pp_scheme, pp.pp_encoding, pp.pp_predicate with
+  | Some CP_ABE, Some PredicateEncoding, Some BoolForm(rep, and_gates) -> 
+     (L.length pp.pp_attributes) * rep * and_gates + 1
+  | None, _, _ -> failwith "scheme not provided"
+  | _, None, _ -> failwith "encoding not provided"
+  | _, _, None -> failwith "predicate not provided"
+
+let set_attributes ~one ~zero pp attrs =
+  match pp.pp_encoding, pp.pp_predicate with
+  | Some PredicateEncoding, Some BoolForm(rep,_) -> 
+     pred_enc_set_attributes ~one ~zero ~nattrs:(L.length pp.pp_attributes) ~rep attrs
+  | None, _ -> failwith "encoding not provided"
+  | _, None -> failwith "predicate not provided"
+
+(*
 let pp_setup pp =
   let module DSG = Hoeteck's_DSG in
   let module PE = Boolean_Formula_PredEnc in
@@ -22,7 +49,7 @@ let pp_setup pp =
      begin match pp.pp_predicate with
      | Some BoolForm(repetitions, and_bound) ->
         let n_attrs = L.length pp.pp_attributes in
-        let mpk, msk = ABE.setup (n_attrs * repetitions + and_bound + 1) in
+        let mpk, msk = ABE.setup ~n:(n_attrs * repetitions + and_bound + 1) () in
         (mpk, msk)
      | _ -> assert false
      end
@@ -53,3 +80,4 @@ let ct_setup pp ct =
   in
   let xM = matrix_from_policy ~nattrs ~rep (Eval.eval_policy pp.pp_attributes (f ct.ct_policy)) in
   (f ct.ct_c0, f ct.ct_c1, f ct.ct_c'), xM
+  *)

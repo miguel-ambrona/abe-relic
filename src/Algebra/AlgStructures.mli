@@ -16,6 +16,9 @@ module type Group = sig
   val atom_from_dlog : R.bn -> atom
   val to_list : t -> atom list
   val from_list : atom list -> t
+
+  val to_string : t -> string
+  val of_string : string -> t
 end
 
 (* ** Fields *)

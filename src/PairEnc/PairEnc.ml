@@ -38,8 +38,8 @@ end
 
 module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
 
-  type x = (R.bn list list) * (int -> R.bn)
-  type y = R.bn list
+  type x = (Zp.t list list) * (int -> Zp.t)
+  type y = Zp.t list
   let to_mon = P.monom_of_monomPoly
 
   let mk_s = P.var "s"
