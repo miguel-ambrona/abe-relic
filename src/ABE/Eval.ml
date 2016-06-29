@@ -140,57 +140,35 @@ let rec eval_policy attributes = function
 
 let eval_sk_attrs attributes key_attrs =
   L.map key_attrs ~f:(fun s -> match Util.position_in_list s attributes with
-  | Some i -> Leaf(Att(i+1))
+  | Some i -> Att(i+1)
   | _ -> failwith ("unknown attribute " ^ s))
 
 type sk = {
-  sk_attrs : string list;
   sk_key : string option;
 }
 
 let empty_sk = {
-  sk_attrs = [];
   sk_key = None;
 }
 
 type sk_cmd =
-  | SK_Attrs of string list
-  | SK_Key of string
+  | Sk of string
 
-let eval_sk_cmd cmd sk =
+let eval_sk_cmd cmd =
   match cmd with
-  | SK_Attrs (l) -> { sk with sk_attrs = l }
-  | SK_Key (s)   -> { sk with sk_key = Some s }
-
-let eval_sk_cmds cmds =
-  let sk = L.fold_left cmds ~init:empty_sk ~f:(fun sk' cmd -> eval_sk_cmd cmd sk') in
-  match sk.sk_key with
-  | None -> failwith "Unspecified secret key data"
-  | _ -> sk
-
+  | Sk (s)   -> { sk_key = Some s }
 
 type ct = {
-  ct_policy : eval_policy option;
   ct_cipher : string option;
 }
 
 let empty_ct = {
-  ct_policy = None;
   ct_cipher = None;
 }
 
 type ct_cmd =
-  | CT_Policy of eval_policy
-  | CT_Cipher of string
+  | Ct of string
 
-let eval_ct_cmd cmd ct = 
+let eval_ct_cmd cmd = 
   match cmd with
-  | CT_Policy (p) -> { ct with ct_policy = Some p }
-  | CT_Cipher (s) -> { ct with ct_cipher = Some s }
-
-let eval_ct_cmds cmds =
-  let ct = L.fold_left cmds ~init:empty_ct ~f:(fun ct' cmd -> eval_ct_cmd cmd ct') in
-  match ct.ct_policy, ct.ct_cipher with
-  | None, _ -> failwith "Unspecified policy"
-  | _, None -> failwith "Unspecified ciphertext data"
-  | _ -> ct
+  | Ct (s) -> { ct_cipher = Some s }

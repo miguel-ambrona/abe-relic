@@ -5,7 +5,6 @@ open Abbrevs
 open Printf
 open Util
 open ABE
-open BoolForms
 open Eval
 open DualSystemG
 open MakeAlgebra
@@ -54,7 +53,6 @@ let main =
   if Array.length Sys.argv = 1 then
     output_string stderr man
   else
-    let compress = false in
     match Sys.argv.(1) with
     | "setup" ->
        let pp_file  = try search_argument "-pp"  with | Not_found -> failwith "missing argument -pp" in
@@ -78,7 +76,6 @@ let main =
     | "keygen" ->
        let mpk_file = try search_argument "-mpk" with | Not_found -> failwith "missing argument -mpk" in
        let msk_file = try search_argument "-msk" with | Not_found -> failwith "missing argument -msk" in
-       let key_attrs = try search_argument "-attrs" with | Not_found -> failwith "missing argument -attrs" in
        let out_file   = try Some (search_argument "-out") with | Not_found -> None in
 
        let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
@@ -90,22 +87,15 @@ let main =
        let mpk = ABE.mpk_of_string (get_option_exn eval_mpk.mpk_key) in
        let msk = ABE.msk_of_string (get_option_exn eval_msk.msk_key) in
 
-       let eval_sk = Parse.sk_attrs key_attrs |> Eval.eval_sk_attrs pp.pp_attributes in
        let y = match pp.pp_scheme with
-         | Some CP_ABE -> Analyze.set_attributes ~one:Zp.one ~zero:Zp.zero pp eval_sk
+         | Some CP_ABE ->
+            let key_attrs = try search_argument "-attrs" with | Not_found -> failwith "missing argument -attrs" in
+            let eval_sk = Parse.sk_attrs key_attrs |> Eval.eval_sk_attrs pp.pp_attributes in
+            ABE.set_y (Analyze.set_attributes pp eval_sk)
          | None -> failwith "scheme not provided"
        in
        let sk_y = ABE.keyGen mpk msk y in
-       let (k0,k1), _ = sk_y in
-
-       let k0_str = L.map k0 ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64) in
-       let k1_str = L.map k1 ~f:(L.map ~f:(fun g -> R.g2_write_bin ~compress g |> to_base64)) in
-
-       let sk_y_str = 
-         ("attributes = " ^ key_attrs ^ ".\n\n") ^
-         (Format.sprintf "k0 = %s.\n\n" (list_to_string k0_str)) ^
-         (Format.sprintf "k1 = %s.\n" (list_list_to_string k1_str))
-       in
+       let sk_y_str = "sk = " ^ (ABE.string_of_sk sk_y) ^ "." in
 
        begin match out_file with
        | None -> Format.printf "%s\n" sk_y_str
@@ -114,48 +104,43 @@ let main =
           fprintf out "%s\n" sk_y_str
        end
 
-
     | "encrypt" ->
        let mpk_file   = try search_argument "-mpk" with | Not_found -> failwith "missing argument -mpk" in
        let msg_file   = try search_argument "-msg" with | Not_found -> failwith "missing argument -msg" in
-       let policy_str = try search_argument "-policy" with | Not_found -> failwith "missing argument -policy" in
        let out_file   = try Some (search_argument "-out") with | Not_found -> None in
 
        let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
-       let pp, mpk = Analyze.mpk_setup eval_mpk in
-       
-       let ev_policy = Parse.policy_cmd policy_str in
-       let nattrs = L.length pp.pp_attributes in
-       let rep = 
-         begin match pp.pp_predicate with
-         | Some (BoolForm(n,_)) -> n
-         | _ -> failwith "unknown predicate"
-         end
-       in
-       let xM = matrix_from_policy ~nattrs ~rep (Eval.eval_policy pp.pp_attributes ev_policy) in
-       let gt_msg = R.gt_rand () in
 
-       let ct_x = ABE.enc mpk xM gt_msg in
-       let (c0, c1, c), _ = ct_x in
-       let password = SHA.sha256 (R.gt_write_bin ~compress gt_msg |> to_base64) in
+       let pp = eval_mpk.mpk_pp in
+
+       let module ABE = (val Analyze.abe_from_pp pp) in
+       let mpk = ABE.mpk_of_string (get_option_exn eval_mpk.mpk_key) in
+       
+       let x = match pp.pp_scheme with
+         | Some CP_ABE ->
+            let policy_str = try search_argument "-policy" with | Not_found -> failwith "missing argument -policy" in
+            let eval_policy = Parse.policy_cmd policy_str |> Eval.eval_policy pp.pp_attributes in
+            ABE.set_x (Analyze.set_policy pp eval_policy)
+         | None -> failwith "scheme not provided"
+       in
+
+       let gt_msg = ABE.rand_msg () in
+
+       let ct_x = ABE.enc mpk x gt_msg in
+       let ct_x_str = "ct = " ^ (ABE.string_of_ct ct_x) ^ "." in
+
+       let password = SHA.sha256 (ABE.string_of_msg gt_msg) in
        AES.encrypt ~key:password ~in_file:msg_file ~out_file;
 
-       let c0_str = L.map c0 ~f:(fun g -> R.g1_write_bin ~compress g |> to_base64) in
-       let c1_str = L.map c1 ~f:(L.map ~f:(fun g -> R.g1_write_bin ~compress g |> to_base64)) in
-       let c_str = R.gt_write_bin ~compress c |> to_base64 in
 
        begin match out_file with
        | None -> ()
        | Some file ->
           let ciphertext_str =
             "___BEGIN_ABE_CIPHERTEXT___" ^
-              (Format.sprintf "\npolicy = %s.\\n\\n" (Eval.string_of_eval_policy ev_policy)) ^
-              (Format.sprintf "c0 = %s.\\n\\n" (list_to_string c0_str)) ^
-              (Format.sprintf "c1 = %s.\\n\\n" (list_list_to_string c1_str)) ^
-              (Format.sprintf "c* = %s.\\n"    (c_str)) ^
+            (Format.sprintf "\n%s\n" ct_x_str) ^
             "___END_ABE_CIPHERTEXT___"
           in
-
           let command = Format.sprintf "printf '%s' >> %s" ciphertext_str file in
           let _ = Unix.open_process command in
           ()
@@ -172,19 +157,23 @@ let main =
        let aes_ct, abe_ct = split_string_on_word (input_file ct_file) sep in
        
        let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
-       let pp, mpk = Analyze.mpk_setup eval_mpk in
+       
+       let pp = eval_mpk.mpk_pp in
+       
+       let module ABE = (val Analyze.abe_from_pp pp) in
+       let mpk = ABE.mpk_of_string (get_option_exn eval_mpk.mpk_key) in
+       
+       let eval_sk = Parse.sk_cmds (input_file sk_file) |> Eval.eval_sk_cmd in
+       let sk_y = ABE.sk_of_string (get_option_exn eval_sk.sk_key) in
 
-       let eval_sk = Parse.sk_cmds (input_file sk_file) |> Eval.eval_sk_cmds in
-       let sk_y = Analyze.sk_setup pp eval_sk in
-
-       let eval_ct = Parse.ct_cmds (sep ^ abe_ct) |> Eval.eval_ct_cmds in
-       let ct_x = Analyze.ct_setup pp eval_ct in
+       let eval_ct = Parse.ct_cmds (sep ^ abe_ct) |> Eval.eval_ct_cmd in
+       let ct_x = ABE.ct_of_string (get_option_exn eval_ct.ct_cipher) in
 
        let command = Format.sprintf "printf '%s' > %s" aes_ct "/tmp/aux.txt" in
        let _ = Unix.open_process command in
 
        let gt_msg = ABE.dec mpk sk_y ct_x in
-       let password = SHA.sha256 (R.gt_write_bin ~compress gt_msg |> to_base64) in
+       let password = SHA.sha256 (ABE.string_of_msg gt_msg) in
        AES.decrypt ~key:password ~in_file:"/tmp/aux.txt" ~out_file
 
     | _ -> output_string stderr man

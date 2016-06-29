@@ -34,13 +34,10 @@ rule lex = parse
   | "attributes"      { ATTRIBUTES }
   | "repetitions"     { REPETITIONS }
   | "and-gates"       { AND_GATES }
-  | "policy"          { POLICY }
-
-
 
   | "mpk" { MPK }
   | "msk" { MSK }
-  | "key" { KEY }
+  | "sk"  { KEY }
   | "ct"  { CT }
 
   | "___BEGIN_ABE_CIPHERTEXT___"   { BEGIN_CT }

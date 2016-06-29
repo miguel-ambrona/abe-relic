@@ -2,15 +2,10 @@ open Core_kernel.Std
 open ABE
 open Eval
 open Abbrevs
-open BoolForms
 open DualSystemG
 open MakeAlgebra
 open PredEnc
-open AlgStructures
-
-let f = function
-  | Some t -> t
-  | None   -> assert false
+open Predicates
 
 let abe_from_pp pp =
   let module B = (val make_BilinearGroup 2) in
@@ -30,12 +25,20 @@ let get_setup_size pp =
   | _, None, _ -> failwith "encoding not provided"
   | _, _, None -> failwith "predicate not provided"
 
-let set_attributes ~one ~zero pp attrs =
+let set_attributes pp attrs =
   match pp.pp_encoding, pp.pp_predicate with
-  | Some PredicateEncoding, Some BoolForm(rep,_) -> 
-     pred_enc_set_attributes ~one ~zero ~nattrs:(L.length pp.pp_attributes) ~rep attrs
+  | Some PredicateEncoding, Some BoolForm(rep,_) ->
+     BoolForm_Attrs(L.length pp.pp_attributes, rep, attrs)
   | None, _ -> failwith "encoding not provided"
   | _, None -> failwith "predicate not provided"
+
+let set_policy pp policy =
+  match pp.pp_encoding, pp.pp_predicate with
+  | Some PredicateEncoding, Some BoolForm(rep,_) ->
+     BoolForm_Policy(L.length pp.pp_attributes, rep, policy)
+  | None, _ -> failwith "encoding not provided"
+  | _, None -> failwith "predicate not provided"
+
 
 (*
 let pp_setup pp =

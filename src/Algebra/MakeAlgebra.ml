@@ -1,3 +1,4 @@
+open Core_kernel.Std
 open Abbrevs
 open Util
 open AlgStructures
@@ -63,9 +64,9 @@ let make_BilinearGroup (k : int) =
     let to_list g = g
     let from_list g = g
 
-    let sep = '|' in
-    let to_string g = list_to_string ~sep (L.map g ~f:(R.g1_write_bin ~compress:false |> to_base64))
-    let of_string str = from_list (L.map (String.split ~on:sep (from_base64 str)) ~f:R.g1_read_bin)
+    let sep = "|"
+    let to_string g = list_to_string ~sep (L.map g ~f:(fun a -> R.g1_write_bin ~compress:false a |> to_base64))
+    let of_string str = from_list (L.map (S.split ~on:(Char.of_string sep) (from_base64 str)) ~f:R.g1_read_bin)
 
     let equal a b = Util.equal_lists ~equal:R.g1_equal (to_list a) (to_list b)
   end
@@ -87,9 +88,9 @@ let make_BilinearGroup (k : int) =
     let to_list h = h
     let from_list h = h
 
-    let sep = '|' in
-    let to_string g = list_to_string ~sep (L.map g ~f:(R.g2_write_bin ~compress:false |> to_base64))
-    let of_string str = from_list (L.map (String.split ~on:sep (from_base64 str)) ~f:R.g2_read_bin)
+    let sep = "|"
+    let to_string g = list_to_string ~sep (L.map g ~f:(fun a -> R.g2_write_bin ~compress:false a |> to_base64))
+    let of_string str = from_list (L.map (S.split ~on:(Char.of_string sep) (from_base64 str)) ~f:R.g2_read_bin)
 
     let equal a b = Util.equal_lists ~equal:R.g2_equal (to_list a) (to_list b)
   end

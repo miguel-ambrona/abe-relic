@@ -8,6 +8,7 @@ open DualSystemG
 open BoolForms
 open PredEnc
 open PairEnc
+open Predicates
 
 (* ** Attribute-Based Encryption *)
 
@@ -21,21 +22,27 @@ module type ABE =
     type sk
     type ct
 
-    type x_input
-    type y_input
-
     val setup  : ?n:int -> unit -> mpk * msk
     val enc    : mpk -> x -> msg -> ct
     val keyGen : mpk -> msk -> y -> sk
     val dec    : mpk -> sk -> ct -> msg
 
-    val set_x : x_input -> x
-    val set_y : y_input -> y
+    val rand_msg : unit -> msg
+
+    val set_x : generic_attribute -> x
+    val set_y : generic_attribute -> y
 
     val string_of_mpk : mpk -> string
     val string_of_msk : msk -> string
+    val string_of_sk  : sk  -> string
+    val string_of_ct  : ct  -> string
+    val string_of_msg : msg -> string
+
     val mpk_of_string : string -> mpk
     val msk_of_string : string -> msk
+    val sk_of_string  : string -> sk
+    val ct_of_string  : string -> ct
+    val msg_of_string : string -> msg
 end
 
 (* ** ABE described in 'Improved Dual System ABE in Prime-Order Groups via Predicate Encodings' *)
@@ -83,22 +90,33 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
     let e_g0_msk = B.Gt.add (B.e c0 (PE.rD x y k1)) (B.Gt.neg (B.e (PE.sD x y c1) k0)) in
     B.Gt.add c' (B.Gt.neg e_g0_msk)        
 
-  type x_input = PE.x_input
-  type y_input = PE.y_input
+  let rand_msg = B.Gt.samp
 
   let set_x = PE.set_x
   let set_y = PE.set_y
-
       
   (* *** String conversions *)
 
   let sep = "&"
+  let sep1 = "$"
 
   let string_of_mpk mpk =
     let (pp, img_mu) = mpk in
     (DSG.string_of_pp pp) ^ sep ^ (DSG.string_of_img_mu img_mu)
 
   let string_of_msk msk = B.G2.to_string msk
+
+  let string_of_sk sk =
+    let (k0, k1), y = sk in
+    (B.G2.to_string k0) ^ sep ^ (list_to_string ~sep:sep1 (L.map k1 ~f:B.G2.to_string)) ^ sep ^ (PE.string_of_y y) 
+
+  let string_of_ct ct =
+    let (c0, c1, c'), x = ct in
+    (B.G1.to_string c0) ^ sep ^ (list_to_string ~sep:sep1 (L.map c1 ~f:B.G1.to_string)) ^ sep ^
+      (B.Gt.to_string c') ^ sep ^ (PE.string_of_x x)
+
+  let string_of_msg msg = B.Gt.to_string msg
+
 
   let mpk_of_string str =
     match String.split ~on:(Char.of_string sep) str with
@@ -107,7 +125,22 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
     | _ -> failwith "invalid string"
 
   let msk_of_string str = B.G2.of_string str
+
+  let sk_of_string str =
+    match String.split ~on:(Char.of_string sep) str with
+    | str_k0 :: str_k1 :: str_y :: [] ->
+       (B.G2.of_string str_k0, L.map (String.split ~on:(Char.of_string sep1) str_k1) ~f:B.G2.of_string),
+      PE.y_of_string str_y
+    | _ -> failwith "invalid string"
       
+  let ct_of_string str =
+    match String.split ~on:(Char.of_string sep) str with
+    | str_c0 :: str_c1 :: str_c' :: str_x :: [] ->
+       (B.G1.of_string str_c0, L.map (String.split ~on:(Char.of_string sep1) str_c1) ~f:B.G1.of_string,
+        B.Gt.of_string str_c'), PE.x_of_string str_x
+    | _ -> failwith "invalide string"
+
+  let msg_of_string str = B.Gt.of_string str
 end
 
 (* ** ABE described in 'A Study of Pair Encodings: Predicate Encryption in Prime Order Groups' *)
@@ -258,7 +291,7 @@ let dark     = Leaf(Att(1))
 let handsome = Leaf(Att(3))
 let phd      = Leaf(Att(4))
 let cs       = Leaf(Att(5))
-let maths     = Leaf(Att(6))
+let maths    = Leaf(Att(6))
 
 let policy = (tall &. dark &. handsome) |. (phd &. cs)
 

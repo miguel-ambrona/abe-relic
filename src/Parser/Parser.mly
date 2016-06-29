@@ -25,8 +25,6 @@
 %token MPK
 %token MSK
 
-%token POLICY
-
 %token BEGIN_CT
 %token END_CT
 
@@ -46,8 +44,8 @@
 %type <Eval.msk_cmd> msk_cmd
 %type <Eval.eval_policy> policy_cmd
 %type <string list> sk_attrs
-%type <Eval.sk_cmd list> sk_cmds
-%type <Eval.ct_cmd list> ct_cmds
+%type <Eval.sk_cmd> sk_cmd
+%type <Eval.ct_cmd> ct_cmd
 
 /************************************************************************/
 /* Start productions */
@@ -57,8 +55,8 @@
 %start msk_cmd
 %start policy_cmd
 %start sk_attrs
-%start sk_cmds
-%start ct_cmds
+%start sk_cmd
+%start ct_cmd
 
 %%
 
@@ -100,14 +98,6 @@ policy_cmd : p = policy; EOF; { p }
 sk_attrs : l = name_list; EOF; { l }
 
 sk_cmd :
-| ATTRIBUTES; EQ; l = name_list; DOT;  { SK_Attrs(l) }
-| KEY; EQ; s = NAME; DOT;              { SK_Key(s) }
+| KEY; EQ; s = NAME; DOT;              { Sk(s) }
 
-
-sk_cmds : cs = list(sk_cmd); EOF; { cs }
-
-ct_cmd :
-| POLICY; EQ; p = policy; DOT;          { CT_Policy(p) }
-| CT; EQ; s = NAME; DOT;                { CT_Cipher(s) }
-
-ct_cmds : BEGIN_CT; cs = list(ct_cmd); END_CT; { cs }
+ct_cmd : BEGIN_CT; CT; EQ; s = NAME; DOT; END_CT; { Ct(s) }

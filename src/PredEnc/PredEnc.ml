@@ -1,9 +1,11 @@
+open Core_kernel.Std
 open Abbrevs
 open Util
 open LinAlg
 open AlgStructures
 open MakeAlgebra
 open BoolForms
+open Predicates
 
 (* ** Predicate Encodings *)
 
@@ -18,10 +20,13 @@ module type PredEnc =
       val sD : x -> y -> B.G1.t list -> B.G1.t
       val rD : x -> y -> B.G2.t list -> B.G2.t
 
-      type x_input
-      type y_input
-      val set_x : x_input -> x
-      val set_y : y_input -> y
+      val set_x : generic_attribute -> x
+      val set_y : generic_attribute -> y
+
+      val string_of_x : x -> string
+      val string_of_y : y -> string
+      val x_of_string : string -> x
+      val y_of_string : string -> y
     end
 
 module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
@@ -87,14 +92,36 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
            (L.fold_left (L.tl_exn a_d)
               ~init:(L.hd_exn a_d)
               ~f:B.G2.add)
-
-  type x_input = ~nattrs:int * int * bool_formula
-  type y_input = int * int * bool_formula list
-
-  let set_x (nattrs, rep, policy) =
-    pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int:(fun i -> R.bn_read_str (string_of_int i) ~radix:10) policy
       
-  let set_y (nattrs, rep, attrs) =
-    pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep attrs
+  let set_x = function
+    | BoolForm_Policy (nattrs, rep, policy) ->
+       pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int:(fun i -> R.bn_read_str (string_of_int i) ~radix:10) policy
+    | _ -> failwith "wrong input"
+
+  let set_y = function
+    | BoolForm_Attrs (nattrs, rep, attrs) ->
+       pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep (L.map attrs ~f:(fun a -> Leaf(a)))
+    | _ -> failwith "wrong input"
+
+
+  (* *** String converions *)
+
+  let sep1 = "#"
+  let sep2 = ","
+  let radix = 10
+
+  let string_of_x x =
+    list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:(R.bn_write_str ~radix)))
+
+  let string_of_y y =
+    list_to_string ~sep:sep2 (L.map y ~f:(R.bn_write_str ~radix))
+
+  let x_of_string str =
+    L.map (String.split ~on:(Char.of_string sep1) str)
+      ~f:(fun row -> L.map (String.split ~on:(Char.of_string sep2) row) ~f:(R.bn_read_str ~radix))
+
+  let y_of_string str =
+    L.map (String.split ~on:(Char.of_string sep2) str) ~f:(R.bn_read_str ~radix)
+    
 
 end
