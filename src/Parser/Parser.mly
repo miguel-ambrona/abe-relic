@@ -20,6 +20,7 @@
 %token ATTRIBUTES
 %token REPETITIONS
 %token AND_GATES
+%token NATTRS
 
 %token KEY
 %token CT
@@ -69,7 +70,7 @@ name_list :
 ;
 
 predicate :
-| BOOL_FORM; LPAR; n = INT; REPETITIONS; COMMA; b = INT; AND_GATES; RPAR;  { BoolForm(n,b) }
+| BOOL_FORM; LPAR; r = INT; REPETITIONS; COMMA; b = INT; AND_GATES; COMMA; n = INT; NATTRS; RPAR;  { BoolForm(r,b,n) }
 ;
 
 pp_cmd :

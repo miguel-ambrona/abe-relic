@@ -2,6 +2,8 @@ open Poly
 open Abbrevs
 open Util
 open MakeAlgebra
+open BoolForms
+open Predicates
 
 
 (* ** Pair Encodings *)
@@ -34,6 +36,14 @@ module type PairEnc = sig
   val encC : x -> P.t list * int
   val encK : y -> P.t list * int
   val pair : x -> y -> (P.Coeffs.t list list) option
+
+  val set_x : generic_attribute -> x
+  val set_y : generic_attribute -> y
+
+  val string_of_x : x -> string
+  val string_of_y : y -> string
+  val x_of_string : string -> x
+  val y_of_string : string -> y
 end
 
 module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
@@ -169,4 +179,39 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
     try Some (Alg.find_matrix ~requirement k c target) with
     | Not_found -> None
 
+
+  let set_x = function
+    | BoolForm_Policy (n1, n2, policy) ->
+       pair_enc_matrix_of_policy ~n1 ~n2 ~t_of_int:Zp.from_int policy
+    | _ -> failwith "wrong input"
+
+  let set_y = function
+    | BoolForm_Attrs (_, _, attrs) ->
+       pair_enc_set_attributes ~t_of_int:Zp.from_int (L.map attrs ~f:(fun a -> Leaf(a)))
+    | _ -> failwith "wrong input"
+
+
+  (* *** String converions *)
+
+  let sep1 = "#"
+  let sep2 = ";"
+    
+  let string_of_x x =
+    let matrix, pi = x in
+    (list_to_string ~sep:sep2 (L.map (Util.list_range 1 (Par.par_n1+1)) ~f:(fun i -> Zp.write_str (pi i))))
+    ^ sep1 ^ (list_list_to_string ~sep1 ~sep2 (L.map matrix ~f:(L.map ~f:Zp.write_str)))
+
+  let string_of_y y =
+    list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
+
+  let x_of_string str =
+    let list = S.split ~on:(Char.of_string sep1) str in
+    let pi_list = S.split ~on:(Char.of_string sep2) (L.hd_exn list) in
+    let pi i = L.nth_exn (L.map pi_list ~f:Zp.read_str) (i-1) in
+    let matrix = L.map (L.tl_exn list) ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str) in
+    matrix, pi
+
+  let y_of_string str =
+    L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
+      
 end

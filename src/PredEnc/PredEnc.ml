@@ -1,4 +1,3 @@
-open Core_kernel.Std
 open Abbrevs
 open Util
 open LinAlg
@@ -116,11 +115,11 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
     list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
 
   let x_of_string str =
-    L.map (String.split ~on:(Char.of_string sep1) str)
-      ~f:(fun row -> L.map (String.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
+    L.map (S.split ~on:(Char.of_string sep1) str)
+      ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
 
   let y_of_string str =
-    L.map (String.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
+    L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
     
 
 end

@@ -12,17 +12,20 @@ let string_of_scheme_type = function
   | CP_ABE -> "CP_ABE"
 
 type predicate_type =
-  | BoolForm of int * int
+  | BoolForm of int * int * int
 
 let string_of_predicate_type = function
-  | BoolForm (n,b) ->
-     "boolean_formula(" ^ (string_of_int n) ^ " repetitions, " ^ (string_of_int b) ^ " and-gates)"
+  | BoolForm (r,b,n) ->
+     "boolean_formula(" ^ (string_of_int r) ^ " repetitions, " 
+     ^ (string_of_int b) ^ " and-gates, " ^ (string_of_int n) ^ " n_attrs)"
 
 type encoding =
   | PredicateEncoding
+  | PairEncoding
 
 let string_of_encoding = function
   | PredicateEncoding -> "PREDICATE_ENCODING"
+  | PairEncoding      -> "PAIR_ENCODING"
 
 type public_parameters = { 
   pp_scheme: scheme_type option;
@@ -60,6 +63,7 @@ let eval_pp_cmd cmd pp =
   | Encoding(s) ->
      begin match s with
      | "PREDICATE_ENCODING" -> { pp with pp_encoding = Some PredicateEncoding; }
+     | "PAIR_ENCODING"      -> { pp with pp_encoding = Some PairEncoding; }
      | _ -> failwith "unknown encoding"
      end
   | Predicate(p) -> { pp with pp_predicate = Some p; }

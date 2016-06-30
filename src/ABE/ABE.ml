@@ -67,7 +67,6 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
     (pp, mu msk), msk
       
   let enc mpk x m =
-    F.printf "%s\n" (PE.string_of_x x);
     let (pp, mu_msk) = mpk in
     let k = (L.length (B.G1.to_list B.G1.one)) - 1 in
     let s_list = sample_list ~f:Zp.samp k in
@@ -150,22 +149,22 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
 
   module DSG = DSG (B)
 
-(*  type mpk = DSG.pp * DSG.img_mu
+  type mpk = DSG.pp * DSG.img_mu
   type msk = B.G2.t
   type x   = PE.x
   type y   = PE.y
   type msg = B.Gt.t
-  type sk  = (B.G2.t * B.G2.t list) * y
-  type ct  = (B.G1.t * B.G1.t list * B.Gt.t) * x
-*)
+  type sk  = (B.G2.t list) * y
+  type ct  = (B.G1.t list * B.Gt.t) * x
 
   let k = L.length (B.G1.to_list B.G1.one) - 1
-  let n = PE.param
 
-  let setup _ =
-    let mu, (pp, _sp) = DSG.sampP n in (* _sp is only used in the proof of security *)
-    let msk = B.G2.samp () in
-    (pp, mu msk), msk
+  let setup ?(n = 0) () =
+    if (n <> 0) then failwith "PairEnc setup does not need n as input"
+    else
+      let mu, (pp, _sp) = DSG.sampP PE.param in (* _sp is only used in the proof of security *)
+      let msk = B.G2.samp () in
+      (pp, mu msk), msk
 
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
@@ -188,7 +187,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
               )
           in
           let ct = 
-            L.fold_left (list_range 1 (n+1))
+            L.fold_left (list_range 1 (PE.param+1))
               ~init:ct
               ~f:(fun ct j ->
                 let monomial = P.((from_mon PE.monom_s) *@ (from_mon (L.nth_exn PE.monom_bi (j-1))))
@@ -202,7 +201,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
             L.fold_left (list_range 1 (w2+1))
               ~init:ct
               ~f:(fun ct i ->
-                L.fold_left (list_range 1 (n+1))
+                L.fold_left (list_range 1 (PE.param+1))
                   ~init:ct
                   ~f:(fun ct j ->
                     let monomial = P.((from_mon (L.nth_exn PE.monom_si (i-1))) *@ (from_mon (L.nth_exn PE.monom_bi (j-1))))
@@ -242,7 +241,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
             L.fold_left (list_range 1 (m2+1))
               ~init:sk
               ~f:(fun sk i -> 
-                L.fold_left (list_range 1 (n+1))
+                L.fold_left (list_range 1 (PE.param+1))
                   ~init:sk
                   ~f:(fun sk j ->
                     let monomial = P.((from_mon (L.nth_exn PE.monom_ri (i-1))) *@ (from_mon (L.nth_exn PE.monom_bi (j-1))))
@@ -281,6 +280,55 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
            )
        in
        B.Gt.add ct' (B.Gt.neg blinding_factor)
+
+
+  let rand_msg = B.Gt.samp
+
+  let set_x = PE.set_x
+  let set_y = PE.set_y
+
+  (* *** String conversions *)
+         
+  let sep = "&"
+  let sep1 = "?"
+
+  let string_of_mpk mpk =
+    let (pp, img_mu) = mpk in
+    (DSG.string_of_pp pp) ^ sep ^ (DSG.string_of_img_mu img_mu)
+      
+  let string_of_msk msk = B.G2.to_string msk
+
+  let string_of_sk sk =
+    let (k, y) = sk in
+    (list_to_string ~sep:sep1 (L.map k ~f:B.G2.to_string)) ^ sep ^ (PE.string_of_y y) 
+
+  let string_of_ct ct =
+    let (c, c'), x = ct in
+    (list_to_string ~sep:sep1 (L.map c ~f:B.G1.to_string)) ^ sep ^ (B.Gt.to_string c') ^ sep ^ (PE.string_of_x x)
+
+  let string_of_msg msg = B.Gt.to_string msg
+
+  let mpk_of_string str =
+    match String.split ~on:(Char.of_string sep) str with
+    | str_pp :: str_img_mu :: [] ->
+       (DSG.pp_of_string str_pp, DSG.img_mu_of_string str_img_mu)
+    | _ -> failwith "invalid string"
+
+  let msk_of_string str = B.G2.of_string str
+
+  let sk_of_string str =
+    match S.split ~on:(Char.of_string sep) str with
+    | str_k :: str_y :: [] ->
+      (L.map (S.split ~on:(Char.of_string sep1) str_k) ~f:B.G2.of_string, PE.y_of_string str_y)
+    | _ -> failwith "invalid string"
+
+  let ct_of_string str =
+    match S.split ~on:(Char.of_string sep) str with
+    | str_c :: str_c' :: str_x :: [] ->
+       (L.map (S.split ~on:(Char.of_string sep1) str_c) ~f:B.G1.of_string, B.Gt.of_string str_c'), PE.x_of_string str_x
+    | _ -> failwith "invalid string"
+
+  let msg_of_string str = B.Gt.of_string str
 
 end
 
@@ -336,7 +384,7 @@ let test_pairEnc () =
   
   let module Par = struct
     let par_n1 = 5    (* Bound on the number of Leaf nodes in the boolean formula*)
-    let par_n2 = 3    (* Bound on the number of AND gates *)
+    let par_n2 = 4    (* n2-1 = Bound on the number of AND gates *)
     let par_T = 4     (* Bound on the number of attributes in a key *)
   end
   in  
@@ -350,9 +398,9 @@ let test_pairEnc () =
   let msg = B.Gt.samp () in
   let ct_x = ABE.enc mpk (mA,pi) msg in
 
-(*  let setS = pair_enc_set_attributes ~t_of_int:bn_of_int [ phd; cs ] in
+  let setS = pair_enc_set_attributes ~t_of_int:bn_of_int [ phd; cs ] in
   let sk_y = ABE.keyGen mpk msk setS in
-  let msg' = ABE.dec mpk sk_y ct_x in*)
+  let msg' = ABE.dec mpk sk_y ct_x in
 
   let setS' = pair_enc_set_attributes ~t_of_int:bn_of_int [ tall; dark; maths; cs ] in
 
@@ -361,7 +409,7 @@ let test_pairEnc () =
 
   let t2 = Unix.gettimeofday() in
 
-(*  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then*)
+  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
   if not (B.Gt.equal msg msg'') then
     F.printf "Pair Encodings ABE test succedded!\n Time: %F seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)

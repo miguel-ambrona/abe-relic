@@ -35,6 +35,7 @@ rule lex = parse
   | "attributes"      { ATTRIBUTES }
   | "repetitions"     { REPETITIONS }
   | "and-gates"       { AND_GATES }
+  | "n_attrs"         { NATTRS }
 
   | "mpk" { MPK }
   | "msk" { MSK }
