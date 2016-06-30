@@ -32,6 +32,7 @@ module Zp = struct
   let is_zero a = R.bn_is_zero (R.bn_mod a p)
     
   let samp () = R.bn_rand_mod p
+  let write_str t = R.bn_write_str (R.bn_mod t p) ~radix:10
   let read_str str = R.bn_mod (R.bn_read_str str ~radix:10) p
 
   let rec ring_exp m n =
@@ -39,7 +40,7 @@ module Zp = struct
     else if n = 0 then one
     else failwith "Negative exponent"
   let ladd cs = L.fold_left ~f:(fun acc c -> add c acc) ~init:zero cs
-  let from_int i = R.bn_read_str (string_of_int i) ~radix:10
+  let from_int i = R.bn_mod (R.bn_read_str (string_of_int i) ~radix:10) p
   let equal = R.bn_equal
   let compare = R.bn_cmp
   let use_parens = false
@@ -66,7 +67,7 @@ let make_BilinearGroup (k : int) =
 
     let sep = "|"
     let to_string g = list_to_string ~sep (L.map g ~f:(fun a -> R.g1_write_bin ~compress:false a |> to_base64))
-    let of_string str = from_list (L.map (S.split ~on:(Char.of_string sep) (from_base64 str)) ~f:R.g1_read_bin)
+    let of_string str = from_list (L.map (S.split ~on:(Char.of_string sep) str) ~f:(fun a -> R.g1_read_bin (from_base64 a)))
 
     let equal a b = Util.equal_lists ~equal:R.g1_equal (to_list a) (to_list b)
   end
@@ -90,7 +91,7 @@ let make_BilinearGroup (k : int) =
 
     let sep = "|"
     let to_string g = list_to_string ~sep (L.map g ~f:(fun a -> R.g2_write_bin ~compress:false a |> to_base64))
-    let of_string str = from_list (L.map (S.split ~on:(Char.of_string sep) (from_base64 str)) ~f:R.g2_read_bin)
+    let of_string str = from_list (L.map (S.split ~on:(Char.of_string sep) str) ~f:(fun a -> R.g2_read_bin (from_base64 a)))
 
     let equal a b = Util.equal_lists ~equal:R.g2_equal (to_list a) (to_list b)
   end

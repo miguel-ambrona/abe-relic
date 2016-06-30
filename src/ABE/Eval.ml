@@ -32,14 +32,10 @@ type public_parameters = {
 }
 
 let string_of_pp pp =
-  match pp.pp_scheme with
-  | None -> "undefined scheme"
-  | Some scheme -> "scheme = " ^ (string_of_scheme_type scheme) ^ ".\n" ^
-     begin match pp.pp_predicate with
-     | None -> "undefined predicate"
-     | Some predicate -> "predicate = " ^ (string_of_predicate_type predicate) ^ ".\n" ^
-        ("attributes = " ^ (list_to_string ~sep:"," pp.pp_attributes) ^ ".\n")
-     end
+  "scheme = " ^ (string_of_scheme_type (get_option_exn pp.pp_scheme)) ^ ".\n" ^
+  "encoding = " ^ (string_of_encoding (get_option_exn pp.pp_encoding)) ^ ".\n" ^
+  "predicate = " ^ (string_of_predicate_type (get_option_exn pp.pp_predicate)) ^ ".\n" ^
+  "attributes = [" ^ (list_to_string ~sep:", " pp.pp_attributes) ^ "].\n"
 
 let empty_pp = {
   pp_scheme = None;
@@ -50,6 +46,7 @@ let empty_pp = {
 
 type pp_cmd =
   | Scheme of string
+  | Encoding of string
   | Predicate of predicate_type
   | Attributes of string list
 
@@ -60,12 +57,13 @@ let eval_pp_cmd cmd pp =
      | "CP_ABE" -> { pp with pp_scheme = Some CP_ABE; }
      | _ -> failwith "Unknown scheme type"
      end
-
-  | Predicate(p) ->
-     { pp with pp_predicate = Some p; }
-
-  | Attributes(l) ->
-     { pp with pp_attributes = pp.pp_attributes @ l; }
+  | Encoding(s) ->
+     begin match s with
+     | "PREDICATE_ENCODING" -> { pp with pp_encoding = Some PredicateEncoding; }
+     | _ -> failwith "unknown encoding"
+     end
+  | Predicate(p) -> { pp with pp_predicate = Some p; }
+  | Attributes(l) -> { pp with pp_attributes = pp.pp_attributes @ l; }
 
 let eval_pp_cmds cmds =
   let pp = L.fold_left cmds ~init:empty_pp ~f:(fun pp' cmd -> eval_pp_cmd cmd pp') in

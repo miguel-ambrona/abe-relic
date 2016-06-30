@@ -10,8 +10,8 @@
 
 let blank = [' ' '\t' '\r' '\n']
 let newline = '\n'
-let base64 = ['A'-'Z' 'a'-'z' '0'-'9' '+' '/' '=' '_']
-let chars = ['a'-'z' 'A'-'Z' '0'-'9']
+let base64 = ['A'-'Z' 'a'-'z' '0'-'9' '+' '/' '=']
+let chars =  ['A'-'Z' 'a'-'z' '0'-'9' '+' '/' '=' '_' '&' '?' '|' '@' '#' ';' '-']
 
 rule lex = parse
   | blank+  { lex lexbuf }
@@ -29,6 +29,7 @@ rule lex = parse
   | "or"    { OR }
 
   | "scheme"          { SCHEME }
+  | "encoding"        { ENCODING }
   | "predicate"       { PREDICATE }
   | "boolean_formula" { BOOL_FORM }
   | "attributes"      { ATTRIBUTES }
@@ -44,7 +45,7 @@ rule lex = parse
   | "___END_ABE_CIPHERTEXT___"     { END_CT }
 
   | '-'?['0'-'9']['0'-'9']* as s { INT(int_of_string(s)) }
-  | base64* as s { NAME(s)}
+  | chars* as s { NAME(s)}
 
 
 and comment = parse

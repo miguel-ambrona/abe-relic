@@ -67,6 +67,7 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
     (pp, mu msk), msk
       
   let enc mpk x m =
+    F.printf "%s\n" (PE.string_of_x x);
     let (pp, mu_msk) = mpk in
     let k = (L.length (B.G1.to_list B.G1.one)) - 1 in
     let s_list = sample_list ~f:Zp.samp k in
@@ -98,7 +99,7 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
   (* *** String conversions *)
 
   let sep = "&"
-  let sep1 = "$"
+  let sep1 = "?"
 
   let string_of_mpk mpk =
     let (pp, img_mu) = mpk in
@@ -215,7 +216,6 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
           ct
         )
     in
-
     let ct' = B.Gt.add m (DSG.sampGT ~randomness:(Some alpha) mu_msk) in
 
     (ct_list, ct'), x
@@ -286,14 +286,14 @@ end
 
 (* ** Test *)
 
-let tall     = Leaf(Att(2))
-let dark     = Leaf(Att(1))
+let tall     = Leaf(Att(1))
+let dark     = Leaf(Att(2))
 let handsome = Leaf(Att(3))
 let phd      = Leaf(Att(4))
 let cs       = Leaf(Att(5))
 let maths    = Leaf(Att(6))
 
-let policy = (tall &. dark &. handsome) |. (phd &. cs)
+let policy = (tall &. handsome &. dark) |. (phd &. cs)
 
 module DSG = Hoeteck's_DSG
 module B = (val make_BilinearGroup 2)
@@ -303,7 +303,7 @@ let bn_of_int i = Zp.read_str (string_of_int i)
 let test_predEnc () =
 
   let n_attrs = 6 in      (* Global number of attributes *)
-  let repetitions = 1 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
+  let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
   let and_bound = 3 in    (* Bound on the number of AND gates *)
 
   let module ABE = PredEncABE (B) (DSG) (Boolean_Formula_PredEnc) in
@@ -311,8 +311,8 @@ let test_predEnc () =
   let t1 = Unix.gettimeofday() in
   
   let mpk, msk = ABE.setup ~n:(n_attrs * repetitions + and_bound + 1) () in
-  let xM = pred_enc_matrix_from_policy ~nattrs:n_attrs ~rep:repetitions ~t_of_int:bn_of_int policy in
-  let msg = B.Gt.samp () in
+  let xM = ABE.set_x (Predicates.BoolForm_Policy(n_attrs, repetitions, policy)) in
+  let msg = ABE.rand_msg () in
 
   let ct_x = ABE.enc mpk xM msg in
 
@@ -350,9 +350,9 @@ let test_pairEnc () =
   let msg = B.Gt.samp () in
   let ct_x = ABE.enc mpk (mA,pi) msg in
 
-  let setS = pair_enc_set_attributes ~t_of_int:bn_of_int [ phd; cs ] in
+(*  let setS = pair_enc_set_attributes ~t_of_int:bn_of_int [ phd; cs ] in
   let sk_y = ABE.keyGen mpk msk setS in
-  let msg' = ABE.dec mpk sk_y ct_x in
+  let msg' = ABE.dec mpk sk_y ct_x in*)
 
   let setS' = pair_enc_set_attributes ~t_of_int:bn_of_int [ tall; dark; maths; cs ] in
 
@@ -361,7 +361,8 @@ let test_pairEnc () =
 
   let t2 = Unix.gettimeofday() in
 
-  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
+(*  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then*)
+  if not (B.Gt.equal msg msg'') then
     F.printf "Pair Encodings ABE test succedded!\n Time: %F seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Pair Encodings test failed"

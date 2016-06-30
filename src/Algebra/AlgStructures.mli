@@ -41,6 +41,7 @@ module type Field = sig
 
   val samp     : unit -> t
   val read_str : string -> t
+  val write_str: t -> string
 end
 
 (* ** Bilinear Groups *)

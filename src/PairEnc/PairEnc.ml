@@ -69,7 +69,6 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
        |> L.concat
     )
 
-
   (* Pair Encoding for Ciphertet-Policy ABE for boolean formulas *)
                            
   let param =

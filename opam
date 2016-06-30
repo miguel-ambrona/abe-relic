@@ -2,7 +2,7 @@ opam-version: "1.2"
 name:	      "abe-relic"
 maintainer:   ["Miguel Ambrona <miguel.ambrona@imdea.org>"]
 author:       ["Miguel Ambrona <miguel.ambrona@imdea.org>"]
-version:      "0.0.1"
+version:      "1.0.1"
 
 build: [
   [make]

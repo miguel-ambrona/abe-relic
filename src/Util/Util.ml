@@ -146,7 +146,6 @@ let from_base64 string64 =
   let string = String.strip string64 in
   B64.decode string
 
-
 let equal_list eq xs0 ys0 =
   let rec go xs ys =
     match xs,ys with

@@ -65,11 +65,11 @@ let main =
        let mpk, msk = ABE.setup ~n () in
               
        let out_mpk_file = open_out mpk_file in
-       fprintf out_mpk_file "%s\n" (ABE.string_of_mpk mpk);
+       fprintf out_mpk_file "%s\nmpk = %s." (Eval.string_of_pp pp) (ABE.string_of_mpk mpk);
        let _ = close_out_noerr out_mpk_file in
 
        let out_msk_file = open_out msk_file in
-       fprintf out_mpk_file "%s\n" (ABE.string_of_msk msk);
+       fprintf out_msk_file "msk = %s." (ABE.string_of_msk msk);
        let _ = close_out_noerr out_msk_file in
        ()
 
@@ -132,13 +132,12 @@ let main =
        let password = SHA.sha256 (ABE.string_of_msg gt_msg) in
        AES.encrypt ~key:password ~in_file:msg_file ~out_file;
 
-
        begin match out_file with
        | None -> ()
        | Some file ->
           let ciphertext_str =
             "___BEGIN_ABE_CIPHERTEXT___" ^
-            (Format.sprintf "\n%s\n" ct_x_str) ^
+            (Format.sprintf "\n%s\\n" ct_x_str) ^
             "___END_ABE_CIPHERTEXT___"
           in
           let command = Format.sprintf "printf '%s' >> %s" ciphertext_str file in

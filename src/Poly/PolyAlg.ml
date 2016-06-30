@@ -25,6 +25,8 @@ module PolyAlg (P : Poly) = struct
       and outputs a matrix E of coefficients satisfying the equation
                                    k'*E*c = target                                        *)
   let find_matrix ~requirement k c target =
+    F.printf "%a\n" (pp_list ",\n" P.pp) k;
+    F.printf "%a\n" (pp_list ",\n" P.pp) c;
     let cross_product = L.map k ~f:(fun p -> L.map c ~f:(fun p' -> P.(p *@ p'))) |> L.concat in
     let forbidden_positions = Util.get_positions_list ~predicate:(fun p -> not (requirement p)) cross_product in
     let cross_product' = Util.set_positions_list ~positions:forbidden_positions ~value:P.zero cross_product in
@@ -32,5 +34,7 @@ module PolyAlg (P : Poly) = struct
     | None -> raise Not_found
     | Some coeffs ->
        let coeffs = Util.set_positions_list ~positions:forbidden_positions ~value:P.Coeffs.zero coeffs in
-       Util.list_to_matrix coeffs (L.length c)
+       let m = Util.list_to_matrix coeffs (L.length c) in
+       F.printf "%a\n" (Util.pp_matrix P.Coeffs.pp) m;
+       m
 end

@@ -87,7 +87,7 @@ module Hoeteck's_DSG (B : BilinearGroup) = struct
     
   let sep0 = "@"
   let sep1 = "#"
-  let sep2 = ","
+  let sep2 = ";"
 
   let string_of_pp pp =
     let (g1_A, g1_WA, g2_B, g2_WB) = pp in

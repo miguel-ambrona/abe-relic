@@ -35,8 +35,8 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
 
   module GaussElim = LinAlg(Zp)
 
-  type x = R.bn list list
-  type y = R.bn list
+  type x = Zp.t list list
+  type y = Zp.t list
   let head = L.hd_exn
   let tail = L.tl_exn
   let single v = if L.length v = 1 then head v else assert false
@@ -95,7 +95,7 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
       
   let set_x = function
     | BoolForm_Policy (nattrs, rep, policy) ->
-       pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int:(fun i -> R.bn_read_str (string_of_int i) ~radix:10) policy
+       pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int:Zp.from_int policy
     | _ -> failwith "wrong input"
 
   let set_y = function
@@ -107,21 +107,20 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
   (* *** String converions *)
 
   let sep1 = "#"
-  let sep2 = ","
-  let radix = 10
+  let sep2 = ";"
 
   let string_of_x x =
-    list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:(R.bn_write_str ~radix)))
+    list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
 
   let string_of_y y =
-    list_to_string ~sep:sep2 (L.map y ~f:(R.bn_write_str ~radix))
+    list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
 
   let x_of_string str =
     L.map (String.split ~on:(Char.of_string sep1) str)
-      ~f:(fun row -> L.map (String.split ~on:(Char.of_string sep2) row) ~f:(R.bn_read_str ~radix))
+      ~f:(fun row -> L.map (String.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
 
   let y_of_string str =
-    L.map (String.split ~on:(Char.of_string sep2) str) ~f:(R.bn_read_str ~radix)
+    L.map (String.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
     
 
 end

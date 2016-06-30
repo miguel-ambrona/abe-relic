@@ -14,6 +14,7 @@
 %token OR
 
 %token SCHEME
+%token ENCODING
 %token PREDICATE
 %token BOOL_FORM
 %token ATTRIBUTES
@@ -73,6 +74,7 @@ predicate :
 
 pp_cmd :
 | SCHEME; EQ; s = NAME; DOT;               { Scheme(s) }
+| ENCODING; EQ; s = NAME; DOT;             { Encoding(s) }
 | PREDICATE; EQ; p = predicate; DOT;       { Predicate(p) }
 | ATTRIBUTES; EQ; attrs = name_list; DOT;  { Attributes(attrs) }
 ;
@@ -82,22 +84,25 @@ pp_cmds : cs = list(pp_cmd); EOF; { cs };
 mpk_cmd :
 | MPK; EQ; s = NAME; DOT;  { Mpk(s) }
 | cmd = pp_cmd             { Pp(cmd) }
+;
 
 mpk_cmds : cs = list(mpk_cmd); EOF; { cs };
 
-msk_cmd : MSK; EQ; s = NAME; DOT; { Msk(s) }
+msk_cmd : MSK; EQ; s = NAME; DOT; { Msk(s) };
 
 policy :
 | s = NAME;                      { Eval_leaf(s) }
 | p1 = policy; OR; p2 = policy   { Eval_OR(p1,p2) }
 | p1 = policy; AND; p2 = policy  { Eval_AND(p1,p2) }
 | LPAR; p = policy; RPAR;        { p }
+;
 
-policy_cmd : p = policy; EOF; { p }
+policy_cmd : p = policy; EOF; { p };
 
-sk_attrs : l = name_list; EOF; { l }
+sk_attrs : l = name_list; EOF; { l };
 
 sk_cmd :
 | KEY; EQ; s = NAME; DOT;              { Sk(s) }
+;
 
-ct_cmd : BEGIN_CT; CT; EQ; s = NAME; DOT; END_CT; { Ct(s) }
+ct_cmd : BEGIN_CT; CT; EQ; s = NAME; DOT; END_CT; { Ct(s) };

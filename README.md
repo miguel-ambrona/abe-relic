@@ -86,6 +86,7 @@ We set the file *public_parameters.txt* as:
 
 ~~~~
 scheme = CP_ABE.
+encoding = PREDICATE_ENCODING.
 predicate = boolean_formula(2 repetitions, 4 and-gates).
 attributes = [tall, dark, handsome, phd, cs, maths].
 ~~~~
