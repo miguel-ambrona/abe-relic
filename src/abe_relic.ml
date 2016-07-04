@@ -101,7 +101,9 @@ let main =
        | None -> Format.printf "%s\n" sk_y_str
        | Some file -> 
           let out = open_out file in
-          fprintf out "%s\n" sk_y_str
+          fprintf out "%s\n" sk_y_str;
+          let _ = close_out_noerr out in
+          ()
        end
 
     | "encrypt" ->

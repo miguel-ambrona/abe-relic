@@ -11,7 +11,7 @@ abe_relic.native:
 	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./abe_relic.native
 
 test:
-	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./test_abe.native && ./test_abe.native
+	ocamlbuild $(COREFLAGS) $(OCAMLBUILDFLAGS) ./test_abe.native
 
 OCAMLDEP= ocamlfind ocamldep -package core_kernel \
             -I src one-line

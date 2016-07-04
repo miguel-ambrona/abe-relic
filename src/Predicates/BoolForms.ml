@@ -5,6 +5,9 @@ open Util
 
 type attribute = Att of int
 
+let pp_attribute fmt = function
+  | Att(i) -> pp_int fmt i
+
 type bool_formula =
   | Or   of bool_formula * bool_formula
   | And  of bool_formula * bool_formula
@@ -87,7 +90,44 @@ let pair_enc_matrix_of_policy ~n1 ~n2 ~t_of_int p =
 let pair_enc_set_attributes ~t_of_int attributes =
   L.map attributes ~f:(function Leaf(Att(i)) -> t_of_int i | _ -> failwith "Invalid attribute")
 
-(* ** Short operators *)
+(* ** Util operators *)
 
 let (&.) a b = And(a,b)
 let (|.) a b = Or(a,b)
+
+let rec string_of_boolean_formula = function
+  | Or  (f1,f2)   -> "(" ^ (string_of_boolean_formula f1) ^ " or "  ^ (string_of_boolean_formula f2) ^ ")"
+  | And (f1,f2)   -> "(" ^ (string_of_boolean_formula f1) ^ " and " ^ (string_of_boolean_formula f2) ^ ")"
+  | Leaf (Att(i)) -> string_of_int i
+
+(* * Check satisfiability of Boolean Formulas *)
+
+let rec eval_boolean_formula ~attributes = function
+  | Or (f1,f2) ->
+     if eval_boolean_formula ~attributes f1 then true
+     else eval_boolean_formula ~attributes f2
+  | And (f1,f2) ->
+     (eval_boolean_formula ~attributes f1) && (eval_boolean_formula ~attributes f2)
+  | Leaf (a) -> L.mem attributes a
+  
+
+(* * Generation of Boolean Formulas *)
+
+let generate_bool_formula ~and_gates ~leaf_nodes ~rep attributes =
+  let rec aux and_gates = function
+    | [] -> failwith "empty formula"
+    | a :: [] -> a
+    | formulas ->
+       let f1, others = extract_random formulas in
+       let f2, rest_formulas = extract_random others in
+       let remaining_gates = (L.length formulas) - 1 in
+       let i = Rand.int remaining_gates in
+       if i < and_gates then aux (and_gates-1) ((And(f1,f2)) :: rest_formulas)
+       else aux and_gates ((Or(f1,f2)) :: rest_formulas)
+  in
+  if (L.length attributes) * rep < leaf_nodes then
+    failwith "impossible to create a boolean formula under this parameters"
+  else
+    let rep_attributes = mk_list attributes rep |> L.concat in
+    let leaves = L.map (random_permutation ~len:leaf_nodes rep_attributes) ~f:(fun a -> Leaf(a)) in
+    aux and_gates leaves

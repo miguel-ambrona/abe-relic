@@ -1,4 +1,3 @@
-open Core_kernel.Std
 open Abbrevs
 open Util
 open AlgStructures
@@ -119,7 +118,7 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
 
 
   let mpk_of_string str =
-    match String.split ~on:(Char.of_string sep) str with
+    match S.split ~on:(Char.of_string sep) str with
     | str_pp :: str_img_mu :: [] ->
        (DSG.pp_of_string str_pp, DSG.img_mu_of_string str_img_mu)
     | _ -> failwith "invalid string"
@@ -127,16 +126,16 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
   let msk_of_string str = B.G2.of_string str
 
   let sk_of_string str =
-    match String.split ~on:(Char.of_string sep) str with
+    match S.split ~on:(Char.of_string sep) str with
     | str_k0 :: str_k1 :: str_y :: [] ->
-       (B.G2.of_string str_k0, L.map (String.split ~on:(Char.of_string sep1) str_k1) ~f:B.G2.of_string),
+       (B.G2.of_string str_k0, L.map (S.split ~on:(Char.of_string sep1) str_k1) ~f:B.G2.of_string),
       PE.y_of_string str_y
     | _ -> failwith "invalid string"
       
   let ct_of_string str =
-    match String.split ~on:(Char.of_string sep) str with
+    match S.split ~on:(Char.of_string sep) str with
     | str_c0 :: str_c1 :: str_c' :: str_x :: [] ->
-       (B.G1.of_string str_c0, L.map (String.split ~on:(Char.of_string sep1) str_c1) ~f:B.G1.of_string,
+       (B.G1.of_string str_c0, L.map (S.split ~on:(Char.of_string sep1) str_c1) ~f:B.G1.of_string,
         B.Gt.of_string str_c'), PE.x_of_string str_x
     | _ -> failwith "invalide string"
 
@@ -309,7 +308,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
   let string_of_msg msg = B.Gt.to_string msg
 
   let mpk_of_string str =
-    match String.split ~on:(Char.of_string sep) str with
+    match S.split ~on:(Char.of_string sep) str with
     | str_pp :: str_img_mu :: [] ->
        (DSG.pp_of_string str_pp, DSG.img_mu_of_string str_img_mu)
     | _ -> failwith "invalid string"
@@ -387,7 +386,7 @@ let test_pairEnc () =
     let par_n2 = 4    (* n2-1 = Bound on the number of AND gates *)
     let par_T = 4     (* Bound on the number of attributes in a key *)
   end
-  in  
+  in
   let module ABE = PairEncABE (B) (DSG) (Boolean_Formula_PairEnc (Par)) in
   
   let t1 = Unix.gettimeofday() in

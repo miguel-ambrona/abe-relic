@@ -1,4 +1,3 @@
-open Core_kernel.Std
 open Abbrevs
 
 let sample_list ~f k =
@@ -132,18 +131,18 @@ let get_option_exn = function
 
 let to_base64 ?(split = false) string =
   let string64 = B64.encode string in
-  let n = String.length string64 in
+  let n = S.length string64 in
   let rec go output k =
     if (n - k < 64) then
-      output ^ (String.slice string64 k n)
+      output ^ (S.slice string64 k n)
     else
-      go (output ^ (String.slice string64 k (k+64)) ^ "\n") (k+64)
+      go (output ^ (S.slice string64 k (k+64)) ^ "\n") (k+64)
   in
   if not split then string64
   else go "" 0
 
 let from_base64 string64 =
-  let string = String.strip string64 in
+  let string = S.strip string64 in
   B64.decode string
 
 let equal_list eq xs0 ys0 =
@@ -191,7 +190,7 @@ let cat_Some l =
   let rec go acc = function
     | Some(x)::xs  -> go (x::acc) xs
     | None::xs     -> go acc      xs
-    | []           -> List.rev acc
+    | []           -> L.rev acc
   in
 go [] l
 
@@ -215,7 +214,26 @@ let is_initialized = ref false
 let init_relic () =
   if !is_initialized then ()
   else
-    (assert (Relic.core_init () = Relic.sts_ok);
-     assert (Relic.pc_param_set_any () = Relic.sts_ok);
+    (assert (R.core_init () = R.sts_ok);
+     assert (R.pc_param_set_any () = R.sts_ok);
      is_initialized := true
     )
+
+
+let extract_random list =
+  let rec extract output n = function
+    | [] -> raise Not_found
+    | a :: rest ->
+       if n = 0 then (a, output @ rest)
+       else extract (output @ [a]) (n-1) rest
+  in
+  extract [] (Rand.int (L.length list)) list
+
+let random_permutation ~len list =
+  let rec aux output list len =
+    if len = 0 then output
+    else
+      let a, others = extract_random list in
+      aux (output @ [a]) others (len-1)
+  in
+  aux [] list len
