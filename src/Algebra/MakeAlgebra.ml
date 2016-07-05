@@ -27,6 +27,7 @@ module Zp = struct
     if R.bn_equal d (R.bn_one ()) then R.bn_mod u p
     else failwith ("Inverse of " ^ (R.bn_write_str a ~radix:10)  ^ 
                       " mod " ^ (R.bn_write_str p ~radix:10) ^ " does not exist")
+
   let one = R.bn_one ()
   let zero = R.bn_zero ()
   let is_zero a = R.bn_is_zero (R.bn_mod a p)
@@ -39,6 +40,7 @@ module Zp = struct
     if n > 0 then mul m (ring_exp m (n-1))
     else if n = 0 then one
     else failwith "Negative exponent"
+
   let ladd cs = L.fold_left ~f:(fun acc c -> add c acc) ~init:zero cs
   let from_int i = R.bn_mod (R.bn_read_str (string_of_int i) ~radix:10) p
   let equal = R.bn_equal

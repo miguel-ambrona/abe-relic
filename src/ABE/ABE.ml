@@ -409,7 +409,6 @@ let test_pairEnc () =
   let t2 = Unix.gettimeofday() in
 
   if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
-  if not (B.Gt.equal msg msg'') then
     F.printf "Pair Encodings ABE test succedded!\n Time: %F seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Pair Encodings test failed"

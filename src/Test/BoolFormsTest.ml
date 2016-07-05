@@ -179,8 +179,8 @@ let test algorithm =
 
   (match algorithm with
   | "predEnc" ->
-     let n_tests = 50 in
-     for n_attributes = 1 to 50 do
+     let n_tests = 200 in
+     for n_attributes = 1 to n_tests do
        let max_leaf_nodes = 2*n_attributes in
        let rep = 1 + (max_leaf_nodes / n_attributes) in
        let and_gates = n_attributes in

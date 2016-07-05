@@ -48,7 +48,7 @@ let list_range i j =
 
 let g1_write = R.g1_write_bin ~compress:false
 let g2_write = R.g2_write_bin ~compress:false
-let gt_write = R.gt_write_bin ~compress:false
+let gt_write = R.gt_write_bin ~compress:false  
 
 let list_empty_intersection ~equal list1 list2 =
   let rec aux = function

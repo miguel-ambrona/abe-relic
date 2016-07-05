@@ -66,6 +66,7 @@ module type Poly = sig
   val coeff_in_field : t -> monom -> Coeffs.t
   val coeff_to_field : Coeffs.t -> coeff
 
+
   val ( *@) : t -> t -> t
   val (+@)  : t -> t -> t
   val (-@)  : t -> t -> t

@@ -1,5 +1,6 @@
 open Poly
 open Abbrevs
+open LinAlg
 open Util
 open MakeAlgebra
 open BoolForms
@@ -47,6 +48,8 @@ module type PairEnc = sig
 end
 
 module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
+
+  module GaussElim = LinAlg(Zp)
 
   type x = (Zp.t list list) * (int -> Zp.t)
   type y = Zp.t list
@@ -158,7 +161,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
     k1 @ k2 @ k3 @ k4 @ k5, (Par.par_n1 + Par.par_n2 - 1)
 
 
-  let pair (mA,pi) setS =
+  let genericPair (mA,pi) setS =
     let c, _ = encC (mA,pi) in
     let k, _ = encK setS in
 
@@ -179,6 +182,90 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
     try Some (Alg.find_matrix ~requirement k c target) with
     | Not_found -> None
 
+
+  let ad_hocPair (mA,pi) setS =
+    let cols = L.length (L.hd_exn mA) in
+    let upsilon = L.filter (list_range 0 (L.length mA)) ~f:(fun i -> L.mem setS (pi (i+1)) ~equal:Zp.equal ) |> L.map ~f:Zp.from_int in
+    let filtered = L.filter (L.zip_exn mA (list_range 0 (L.length mA))) ~f:(fun (_,i) -> L.mem upsilon (Zp.from_int i) ~equal:Zp.equal) |> unzip1 in
+    if filtered = [] then None (* No relevant attributes in the key *)
+    else
+      let matrix = transpose_matrix filtered in
+      match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (cols-1))) with
+      | None -> None (* Decryption failed *)
+      | Some epsilon ->
+
+         let rec set_epsilon output epsilon i k =
+           if i = k then output
+           else
+             if L.mem upsilon (Zp.from_int i) ~equal:Zp.equal then set_epsilon (output @ [L.hd_exn epsilon]) (L.tl_exn epsilon) (i+1) k
+             else set_epsilon (output @ [Zp.zero]) epsilon (i+1) k
+         in
+         let epsilon = set_epsilon [] epsilon 0 (L.length mA) in
+
+         let col1_k1 = mk_list Zp.zero (Par.par_n1) in
+         let col1_k2 =
+           L.map (list_range 1 (Par.par_n1+1))
+             ~f:(fun i -> 
+               L.map (list_range 1 (Par.par_n2+1))
+                 ~f:(fun j -> Zp.(mul (L.nth_exn epsilon (i-1)) ((L.nth_exn (L.nth_exn mA (i-1)) (j-1)))))
+             )
+           |> L.concat
+         in
+         let col1_k3 =
+           L.map (list_range 1 (Par.par_n1+1))
+             ~f:(fun i ->
+               L.map (L.filter (list_range 1 (Par.par_n1+1)) ~f:(fun l -> not (i = l)))
+                 ~f:(fun l ->
+                   L.map (list_range 1 (Par.par_n2+1))
+                     ~f:(fun j -> Zp.(mul (L.nth_exn epsilon (i-1)) ((L.nth_exn (L.nth_exn mA (l-1)) (j-1)))))
+                 )
+                 |> L.concat
+             )
+             |> L.concat
+         in
+         let col1_k4 =
+           L.map (list_range 1 (Par.par_n1+1))
+             ~f:(fun i ->
+               L.map setS
+                 ~f:(fun y -> if Zp.equal y (pi i) then L.nth_exn epsilon (i-1) else Zp.zero)
+             )
+             |> L.concat
+         in
+         let col1_k5 =
+           L.map (list_range 1 (Par.par_n1+1))
+             ~f:(fun i ->
+               L.map (L.filter (list_range 1 (Par.par_n1+1)) ~f:(fun l -> not (i = l)))
+                 ~f:(fun l ->
+                   L.map (list_range 0 (Par.par_T+1))
+                     ~f:(fun t -> Zp.(mul (L.nth_exn epsilon (i-1)) (ring_exp (pi l) t) ))
+                 )
+                 |> L.concat
+             )
+             |> L.concat
+         in
+         let monom_one = L.hd_exn (P.mons P.one) in
+         let f x = let t = P.const x in P.(coeff_in_field t monom_one) in
+         let col1 = L.map (col1_k1 @ col1_k2 @ col1_k3 @ col1_k4 @ col1_k5) ~f:Zp.(mul (neg one)) in
+         let col2 = epsilon @ (mk_list Zp.zero ((L.length col1) - (L.length epsilon))) in
+         Some (transpose_matrix [L.map col1 ~f; L.map col2 ~f])
+
+  let pair (mA,pi) setS =
+(*
+    let c, _ = encC (mA,pi) in
+    let k, _ = encK setS in
+    let mE = ad_hocPair (mA,pi) setS in
+    let () =
+      match mE with
+      | Some matrix ->
+         let matrix = L.map matrix ~f:(L.map ~f:(fun x -> P.(const (coeff_to_field x) ) )) in
+         let v = matrix_times_vector ~add:P.add ~mul:P.mult matrix c in
+         let p = vector_times_vector ~add:P.add ~mul:P.mult k v in
+         F.printf "%a\n" P.pp p;
+         ()
+      | None -> ()
+    in
+*)
+    ad_hocPair (mA,pi) setS  
 
   let set_x = function
     | BoolForm_Policy (n1, n2, policy) ->
