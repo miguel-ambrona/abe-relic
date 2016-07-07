@@ -111,6 +111,33 @@ module Disjuction_Characterizations (C1 : PredEnc_Characterization) (C2 : PredEn
 
 end
 
+
+module Dual_Characterization (C : PredEnc_Characterization) = struct
+
+  type x = C.y
+  type y = C.x
+
+  let predicate x y = C.predicate y x
+  
+  let sE_matrix x = join_blocks [[ C.rE_matrix x; (L.map (C.kE_vector x) ~f:(fun a -> [a])) ]]
+  let rE_matrix y =
+    let mAs = C.sE_matrix y in
+    join_blocks [[ mAs; L.map (list_range 0 (L.length mAs)) ~f:(fun _ -> [Zp.zero]) ];
+                 [ [mk_list Zp.zero (L.length (L.hd_exn mAs))]; [[Zp.one]]  ]]
+  let kE_vector y = (mk_list Zp.zero (L.length (C.sE_matrix y))) @ [Zp.one]
+  let sD_vector x y = C.rD_vector y x
+  let rD_vector x y = (C.sD_vector y x) @ [Zp.one]
+
+  let set_x x = C.set_y x
+  let set_y y = C.set_x y
+
+  let string_of_x x = C.string_of_y x
+  let string_of_y y = C.string_of_x y
+  let x_of_string str = C.y_of_string str
+  let y_of_string str = C.x_of_string str
+end
+
+
 module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
 
   (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)

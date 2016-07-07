@@ -365,40 +365,41 @@ let test_predEnc () =
   let module C1 = (val make_BF_PredEnc_Characterization n) in
   let module C2 = (val make_BF_PredEnc_Characterization n) in
   let module C = Disjuction_Characterizations (C1) (C2) in
+  let module C = Dual_Characterization (C) in
   let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let t1 = Unix.gettimeofday() in
   
-  let mpk, msk = ABE.setup ~n:(2*n) () in
+  let mpk, msk = ABE.setup ~n:(2*n+1) () in
+  let attributes = [ phd_att; cs_att; ] in
   let xM = ABE.set_x (Predicates.GenericAttPair(
-    BoolForm_Policy(n_attrs, repetitions, and_bound, policy1),
-    BoolForm_Policy(n_attrs, repetitions, and_bound, policy2)
+    BoolForm_Attrs(n_attrs, repetitions, attributes),
+    BoolForm_Attrs(n_attrs, repetitions, attributes)
   )) in
 
   let msg = ABE.rand_msg () in
   let ct_x = ABE.enc mpk xM msg in
-
-  let attributes = [ phd_att; cs_att; ] in
+  
   let y = ABE.set_y (Predicates.GenericAttPair(
-    BoolForm_Attrs(n_attrs, repetitions, attributes),
-    BoolForm_Attrs(n_attrs, repetitions, attributes)
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy1),
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy2)
   )) in
+
 
   let sk_y = ABE.keyGen mpk msk y in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  let attributes = [ tall_att; dark_att; phd_att; maths_att ] in
-  let y'= ABE.set_y (Predicates.GenericAttPair(
-    BoolForm_Attrs(n_attrs, repetitions, attributes),
-    BoolForm_Attrs(n_attrs, repetitions, attributes)
+  let y' = ABE.set_y (Predicates.GenericAttPair(
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy1),
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy1)
   )) in
 
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
 
   let t2 = Unix.gettimeofday() in
-
+  
   if (B.Gt.equal msg msg') && not(B.Gt.equal msg msg'') then
     F.printf "Predicate Encodings ABE test succedded!\n Time: %F seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
