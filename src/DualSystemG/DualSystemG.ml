@@ -1,8 +1,10 @@
 open Core_kernel.Std
 open Abbrevs
 open Util
+open Matrix
 open MakeAlgebra
 open AlgStructures
+
 
 (* ** Dual System Group proposed by Hoeteck *)
 

@@ -1,5 +1,6 @@
 open Abbrevs
 open Util
+open Matrix
 open AlgStructures
 open MakeAlgebra
 open DualSystemGInterface
@@ -221,8 +222,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
   let keyGen mpk msk y =
     let (pp, _mu_msk) = mpk in
     let k_polys, m2 = PE.encK y in
-    let h_list = sample_list ~f:(fun () -> DSG.sampH pp) m2 in
-    
+    let h_list = sample_list ~f:(fun () -> DSG.sampH pp) m2 in 
     let sk_list =
       L.map k_polys
         ~f:(fun k ->
@@ -353,7 +353,9 @@ let test_predEnc () =
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
   let and_bound = 3 in    (* Bound on the number of AND gates *)
 
-  let module ABE = PredEncABE (B) (DSG) (Boolean_Formula_PredEnc) in
+(*  let module PE = Boolean_Formula_PredEnc in *)
+  let module PE = PredEnc_from_Characterization (BF_PredEnc_Characterization) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let t1 = Unix.gettimeofday() in
   

@@ -1,6 +1,7 @@
 open Core_kernel.Std
 open Abbrevs
 open Util
+open Matrix
 open AlgStructures
 
 let prime = ref None

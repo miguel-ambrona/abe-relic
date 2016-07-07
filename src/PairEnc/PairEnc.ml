@@ -2,6 +2,7 @@ open Poly
 open Abbrevs
 open LinAlg
 open Util
+open Matrix
 open MakeAlgebra
 open BoolForms
 open Predicates

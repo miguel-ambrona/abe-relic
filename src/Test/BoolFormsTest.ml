@@ -167,11 +167,11 @@ let test algorithm =
   let dec_file    = open_out "tests/dec_times.txt" in
 
   let i1 = 2 in
-  let i2 = 11 in
+  let i2 = 16 in
   let j1 = 3 in
-  let j2 = 5 in
+  let j2 = 6 in
   let k1 = 2 in
-  let k2 = 11 in
+  let k2 = 16 in
 
   let n_tests = (i2-i1+1) * (j2-j1+1) * (k2-k1+1) in
   let counter = ref 1 in
@@ -198,7 +198,7 @@ let test algorithm =
            F.printf "Test %d/%d:\n" !counter n_tests;
            counter := !counter + 1;
            run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file 
-             ~n_attributes ~and_gates ~rep ~max_leaf_nodes ()
+             ~n_attributes:(2*n_attributes) ~and_gates:(2*and_gates) ~rep ~max_leaf_nodes:(2*max_leaf_nodes) ()
          done
        done
      done
