@@ -333,14 +333,22 @@ end
 
 (* ** Test *)
 
-let tall     = Leaf(Att(1))
-let dark     = Leaf(Att(2))
-let handsome = Leaf(Att(3))
-let phd      = Leaf(Att(4))
-let cs       = Leaf(Att(5))
-let maths    = Leaf(Att(6))
+let tall_att     = Att(1)
+let dark_att     = Att(2)
+let handsome_att = Att(3)
+let phd_att      = Att(4)
+let cs_att       = Att(5)
+let maths_att    = Att(6)
 
-let policy = (tall &. handsome &. dark) |. (phd &. cs)
+let tall     = Leaf(tall_att)
+let dark     = Leaf(dark_att)
+let handsome = Leaf(handsome_att)
+let phd      = Leaf(phd_att)
+let cs       = Leaf(cs_att)
+let maths    = Leaf(maths_att)
+
+let policy1 = (tall &. handsome &. dark)
+let policy2 = (phd &. cs)
 
 module DSG = Hoeteck's_DSG
 module B = (val make_BilinearGroup 2)
@@ -353,23 +361,38 @@ let test_predEnc () =
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
   let and_bound = 3 in    (* Bound on the number of AND gates *)
 
-(*  let module PE = Boolean_Formula_PredEnc in *)
-  let module PE = PredEnc_from_Characterization (BF_PredEnc_Characterization) in
+  let n = n_attrs * repetitions + and_bound + 1 in
+  let module C1 = (val make_BF_PredEnc_Characterization n) in
+  let module C2 = (val make_BF_PredEnc_Characterization n) in
+  let module C = Disjuction_Characterizations (C1) (C2) in
+  let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let t1 = Unix.gettimeofday() in
   
-  let mpk, msk = ABE.setup ~n:(n_attrs * repetitions + and_bound + 1) () in
-  let xM = ABE.set_x (Predicates.BoolForm_Policy(n_attrs, repetitions, policy)) in
-  let msg = ABE.rand_msg () in
+  let mpk, msk = ABE.setup ~n:(2*n) () in
+  let xM = ABE.set_x (Predicates.GenericAttPair(
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy1),
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy2)
+  )) in
 
+  let msg = ABE.rand_msg () in
   let ct_x = ABE.enc mpk xM msg in
 
-  let y = pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ phd; cs ] in
+  let attributes = [ phd_att; cs_att; ] in
+  let y = ABE.set_y (Predicates.GenericAttPair(
+    BoolForm_Attrs(n_attrs, repetitions, attributes),
+    BoolForm_Attrs(n_attrs, repetitions, attributes)
+  )) in
+
   let sk_y = ABE.keyGen mpk msk y in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  let y' = pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs:n_attrs ~rep:repetitions [ tall; dark; phd; maths ] in
+  let attributes = [ tall_att; dark_att; phd_att; maths_att ] in
+  let y'= ABE.set_y (Predicates.GenericAttPair(
+    BoolForm_Attrs(n_attrs, repetitions, attributes),
+    BoolForm_Attrs(n_attrs, repetitions, attributes)
+  )) in
 
   let sk_y' = ABE.keyGen mpk msk y' in
   let msg'' = ABE.dec mpk sk_y' ct_x in
@@ -393,17 +416,17 @@ let test_pairEnc () =
   
   let t1 = Unix.gettimeofday() in
 
-  let mA, pi = pair_enc_matrix_of_policy ~n1:Par.par_n1 ~n2:Par.par_n2 ~t_of_int:bn_of_int policy in
+  let mA, pi = ABE.set_x (Predicates.BoolForm_Policy(Par.par_n1, Par.par_n2, 0, policy1 |. policy2)) in
 
   let mpk, msk = ABE.setup () in
   let msg = B.Gt.samp () in
   let ct_x = ABE.enc mpk (mA,pi) msg in
 
-  let setS = pair_enc_set_attributes ~t_of_int:bn_of_int [ phd; cs ] in
+  let setS = ABE.set_y (Predicates.BoolForm_Attrs(Par.par_n1, Par.par_n2, [ phd_att; cs_att ])) in
   let sk_y = ABE.keyGen mpk msk setS in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  let setS' = pair_enc_set_attributes ~t_of_int:bn_of_int [ tall; dark; maths; cs ] in
+  let setS' = ABE.set_y (Predicates.BoolForm_Attrs(Par.par_n1, Par.par_n2, [ tall_att; dark_att; phd_att; maths_att ])) in
 
   let sk_y' = ABE.keyGen mpk msk setS' in
   let msg'' = ABE.dec mpk sk_y' ct_x in

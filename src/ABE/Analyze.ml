@@ -51,11 +51,11 @@ let set_attributes pp attrs =
 
 let set_policy pp policy =
   match pp.pp_encoding, pp.pp_predicate with
-  | Some PredicateEncoding, Some BoolForm(rep,_,_) ->
-     BoolForm_Policy(L.length pp.pp_attributes, rep, policy)
+  | Some PredicateEncoding, Some BoolForm(rep,and_gates,_) ->
+     BoolForm_Policy(L.length pp.pp_attributes, rep, and_gates, policy)
 
   | Some PairEncoding, Some BoolForm(n1,n2,_) ->
-     BoolForm_Policy(n1, n2, policy)
+     BoolForm_Policy(n1, n2, 0, policy)
 
   | None, _ -> failwith "encoding not provided"
   | _, None -> failwith "predicate not provided"

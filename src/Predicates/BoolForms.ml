@@ -47,10 +47,15 @@ let sort_matrix ?(rep = 1) matrix n_attrs =
   L.sort (aux matrix 1)
     ~cmp:(fun (_r1,a1) (_r2,a2) -> match a1,a2 with | Att(i1), Att(i2) -> i1 - i2)
 
-let pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int p =
+let pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int p =
   sort_matrix ~rep (matrix_of_formula p) nattrs
   |> unzip1
   |> L.map ~f:(L.map ~f:t_of_int)
+  |> L.map ~f:(fun row ->
+    let l = L.length row in
+    if l > and_gates + 1 then failwith ("The number of AND gates must be at most " ^ (string_of_int (and_gates-1)))
+    else row @ (mk_list (t_of_int 0) (and_gates + 1 - l))
+  )
   
 let pred_enc_set_attributes ~one ~zero ~nattrs ~rep attrs =
   let rec repeat output = function
@@ -66,6 +71,7 @@ let pred_enc_set_attributes ~one ~zero ~nattrs ~rep attrs =
         mk_bit_vector (output @ [ zero ]) (k+1)
   in
   repeat [] (mk_bit_vector [] 1)
+
 
 (* ** Pair Encodings Matrix Ajustments *)
 

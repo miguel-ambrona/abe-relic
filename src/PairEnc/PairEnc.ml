@@ -269,7 +269,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
     ad_hocPair (mA,pi) setS  
 
   let set_x = function
-    | BoolForm_Policy (n1, n2, policy) ->
+    | BoolForm_Policy (n1, n2, _, policy) ->
        pair_enc_matrix_of_policy ~n1 ~n2 ~t_of_int:Zp.from_int policy
     | _ -> failwith "wrong input"
 

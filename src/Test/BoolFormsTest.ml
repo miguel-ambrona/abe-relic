@@ -42,7 +42,7 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
   let mpk, msk = ABE1.setup ~n:(n_attributes * rep + and_gates + 1) () in
   
   let t2 = Unix.gettimeofday() in
-  let xM  = ABE1.set_x (Predicates.BoolForm_Policy(n_attributes, rep, policy)) in
+  let xM  = ABE1.set_x (Predicates.BoolForm_Policy(n_attributes, rep, and_gates, policy)) in
   let msg = ABE1.rand_msg () in
   let ct_x = ABE1.enc mpk xM msg in
   
@@ -76,7 +76,7 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
   let mpk, msk = ABE2.setup () in
   
   let t2 = Unix.gettimeofday() in
-  let xM  = ABE2.set_x (Predicates.BoolForm_Policy(Par.par_n1, Par.par_n2, policy)) in
+  let xM  = ABE2.set_x (Predicates.BoolForm_Policy(Par.par_n1, Par.par_n2, 0, policy)) in
   let msg = ABE2.rand_msg () in
   let ct_x = ABE2.enc mpk xM msg in
   
@@ -129,7 +129,7 @@ let predEnc_test  ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attr
   let mpk, msk = ABE.setup ~n:(n_attributes * rep + and_gates + 1) () in
   
   let t2 = Unix.gettimeofday() in
-  let xM  = ABE.set_x (Predicates.BoolForm_Policy(n_attributes, rep, policy)) in
+  let xM  = ABE.set_x (Predicates.BoolForm_Policy(n_attributes, rep, and_gates, policy)) in
   let msg = ABE.rand_msg () in
   let ct_x = ABE.enc mpk xM msg in
   

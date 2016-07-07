@@ -35,8 +35,8 @@ module type PredEnc_Characterization = sig
   type y
   val predicate : x -> y -> bool
     
-  val sE_matrix : x -> int -> Zp.t list list  (* int corresponds to w_length *)
-  val rE_matrix : y -> int -> Zp.t list list  (* int corresponds to w_length *)
+  val sE_matrix : x -> Zp.t list list
+  val rE_matrix : y -> Zp.t list list
   val kE_vector : y -> Zp.t list
   val sD_vector : x -> y -> Zp.t list
   val rD_vector : x -> y -> Zp.t list
@@ -54,8 +54,8 @@ module PredEnc_from_Characterization (C : PredEnc_Characterization) (B : Bilinea
     type x = C.x
     type y = C.y
 
-    let sE x w = matrix_times_vector ~add:B.G1.add ~mul:(fun a g -> B.G1.mul g a) (C.sE_matrix x (L.length w)) w
-    let rE y w = matrix_times_vector ~add:B.G2.add ~mul:(fun a g -> B.G2.mul g a) (C.rE_matrix y (L.length w)) w
+    let sE x w = matrix_times_vector ~add:B.G1.add ~mul:(fun a g -> B.G1.mul g a) (C.sE_matrix x) w
+    let rE y w = matrix_times_vector ~add:B.G2.add ~mul:(fun a g -> B.G2.mul g a) (C.rE_matrix y) w
     let kE y alpha = L.map (C.kE_vector y) ~f:(fun exp -> B.G2.mul alpha exp)
     let sD x y c = vector_times_vector ~add:B.G1.add ~mul:(fun a g -> B.G1.mul g a) (C.sD_vector x y) c
     let rD x y d = vector_times_vector ~add:B.G2.add ~mul:(fun a g -> B.G2.mul g a) (C.rD_vector x y) d
@@ -67,6 +67,48 @@ module PredEnc_from_Characterization (C : PredEnc_Characterization) (B : Bilinea
     let string_of_y = C.string_of_y
     let x_of_string = C.x_of_string
     let y_of_string = C.y_of_string
+end
+
+module Disjuction_Characterizations (C1 : PredEnc_Characterization) (C2 : PredEnc_Characterization) = struct
+
+  let diag_join m1 m2 =
+    join_blocks [[ m1; create_matrix Zp.zero ~m:(L.length m1) ~n:(L.length (L.hd_exn m2))];
+                 [ create_matrix Zp.zero ~m:(L.length m2) ~n:(L.length (L.hd_exn m1)); m2 ]];
+
+  type x = C1.x * C2.x
+  type y = C1.y * C2.y
+
+  let predicate (x1,x2) (y1,y2) = (C1.predicate x1 y1) || (C2.predicate x2 y2)
+
+  let sE_matrix (x1,x2) = diag_join (C1.sE_matrix x1) (C2.sE_matrix x2)
+  let rE_matrix (y1,y2) = diag_join (C1.rE_matrix y1) (C2.rE_matrix y2)
+  let kE_vector (y1,y2) = (C1.kE_vector y1) @ (C2.kE_vector y2)
+  let sD_vector (x1,x2) (y1,y2) =
+    let b1 = C1.sD_vector x1 y1 in
+    let b2 = C2.sD_vector x2 y2 in
+    if C1.predicate x1 y1 then b1 @ (L.map b2 ~f:(fun _ -> Zp.zero))
+    else (L.map b1 ~f:(fun _ -> Zp.zero)) @ b2
+  let rD_vector (x1,x2) (y1,y2) =
+    let b1 = C1.rD_vector x1 y1 in
+    let b2 = C2.rD_vector x2 y2 in
+    if C1.predicate x1 y1 then b1 @ (L.map b2 ~f:(fun _ -> Zp.zero))
+    else (L.map b1 ~f:(fun _ -> Zp.zero)) @ b2
+
+  let set_x = function GenericAttPair(gx1, gx2) -> (C1.set_x gx1, C2.set_x gx2) | _ -> failwith "Pair of Generic Attributes expected"
+  let set_y = function GenericAttPair(gy1, gy2) -> (C1.set_y gy1, C2.set_y gy2) | _ -> failwith "Pair of Generic Attributes expected"
+
+  let sep = "!"
+  let string_of_x (x1,x2) = (C1.string_of_x x1) ^ sep ^ (C2.string_of_x x2)
+  let string_of_y (y1,y2) = (C1.string_of_y y1) ^ sep ^ (C2.string_of_y y2)
+  let x_of_string str =
+    match S.split str ~on:(Char.of_string sep) with
+    | s1 :: s2 :: [] -> (C1.x_of_string s1, C2.x_of_string s2)
+    | _ -> failwith "invalid string"
+  let y_of_string str =
+    match S.split str ~on:(Char.of_string sep) with
+    | s1 :: s2 :: [] -> (C1.y_of_string s1, C2.y_of_string s2)
+    | _ -> failwith "invalid string"
+
 end
 
 module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
@@ -131,8 +173,8 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
               ~f:B.G2.add)
       
   let set_x = function
-    | BoolForm_Policy (nattrs, rep, policy) ->
-       pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int:Zp.from_int policy
+    | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
+       pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int:Zp.from_int policy
     | _ -> failwith "wrong input"
 
   let set_y = function
@@ -161,92 +203,95 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
 end
 
 
-module BF_PredEnc_Characterization = struct
-
-  (* Predicate Encoding Characterization for Ciphertet-Policy ABE for boolean formulas *)
-
-  module GaussElim = LinAlg(Zp)
-
-  let rec expand_a output a = function
-    | [] -> if a = [] then output else assert false
-    | yi :: rest_y ->
-       if Zp.is_zero yi then expand_a (output @ [Zp.zero]) a rest_y
-       else expand_a (output @ [L.hd_exn a]) (L.tl_exn a) rest_y
-
-  let get_a xM y =
-    let l' = L.length (L.hd_exn xM) in
-    let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (Zp.is_zero yi)) |> unzip1 in
-    if filtered = [] then None (* No attributes in the key *)
-    else
-      let matrix = transpose_matrix filtered in
-      GaussElim.solve matrix (Zp.one :: (mk_list Zp.zero (l'-1)))
-
-  type x = Zp.t list list
-  type y = Zp.t list
-
-  let predicate xM y =
-    match get_a xM y with
-    | None -> false
-    | Some _ -> true
+let make_BF_PredEnc_Characterization (w_length : int) =
+  
+  let module Characterization = struct
       
-  let sE_matrix xM _w_length =
-    let id_n = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:(L.length xM) in
-    let xM_without_col1 = L.map xM ~f:(fun row -> L.tl_exn row) in
-    let xM_col1 = L.map xM ~f:(fun row -> [L.hd_exn row]) in
-    join_blocks [[id_n; xM_without_col1; xM_col1]]
-
-  let rE_matrix y w_length =
-    let l = L.length y in
-    let l' = w_length - l in
-    let diag_y = diagonal_matrix ~zero:Zp.zero y in
-    join_blocks
-      [[ create_matrix Zp.zero ~m:1 ~n:l; create_matrix Zp.zero ~m:1 ~n:(l'-1); create_matrix Zp.one ~m:1 ~n:1 ];
-       [ diag_y; create_matrix Zp.zero ~m:l ~n:(l'-1); create_matrix Zp.zero ~m:l ~n:1 ]]
+    (* Predicate Encoding Characterization for Ciphertet-Policy ABE for boolean formulas *)
       
-  let kE_vector y =
-    Zp.one :: (mk_list Zp.zero (L.length y))
-
-  let sD_vector xM y =
-    let a = match get_a xM y with
-      | None -> mk_list Zp.zero (L.length y) (* Decryption failed *)
-      | Some a -> expand_a [] a y
-    in
-    L.map2_exn y a ~f:(fun yi ai -> Zp.mul yi ai)
-               
-  let rD_vector xM y =
-    let a = match get_a xM y with
-      | None -> mk_list Zp.zero (L.length y) (* Decryption failed *)
-      | Some a -> expand_a [] a y
-    in
-    Zp.one :: a
+    module GaussElim = LinAlg(Zp)
       
-  let set_x = function
-    | BoolForm_Policy (nattrs, rep, policy) ->
-       pred_enc_matrix_from_policy ~nattrs ~rep ~t_of_int:Zp.from_int policy
-    | _ -> failwith "wrong input"
+    let rec expand_a output a = function
+      | [] -> if a = [] then output else assert false
+      | yi :: rest_y ->
+         if Zp.is_zero yi then expand_a (output @ [Zp.zero]) a rest_y
+         else expand_a (output @ [L.hd_exn a]) (L.tl_exn a) rest_y
+           
+    let get_a xM y =
+      let l' = L.length (L.hd_exn xM) in
+      let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (Zp.is_zero yi)) |> unzip1 in
+      if filtered = [] then None (* No attributes in the key *)
+      else
+        let matrix = transpose_matrix filtered in
+        GaussElim.solve matrix (Zp.one :: (mk_list Zp.zero (l'-1)))
 
-  let set_y = function
-    | BoolForm_Attrs (nattrs, rep, attrs) ->
-       pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep (L.map attrs ~f:(fun a -> Leaf(a)))
-    | _ -> failwith "wrong input"
+    type x = Zp.t list list
+    type y = Zp.t list
+
+    let predicate xM y =
+      match get_a xM y with
+      | None -> false
+      | Some _ -> true
+         
+    let sE_matrix xM =
+      let id_n = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:(L.length xM) in
+      let xM_without_col1 = L.map xM ~f:(fun row -> L.tl_exn row) in
+      let xM_col1 = L.map xM ~f:(fun row -> [L.hd_exn row]) in
+      join_blocks [[id_n; xM_without_col1; xM_col1]]
+
+    let rE_matrix y =
+      let l = L.length y in
+      let l' = w_length - l in
+      let diag_y = diagonal_matrix ~zero:Zp.zero y in
+      join_blocks
+        [[ create_matrix Zp.zero ~m:1 ~n:l; create_matrix Zp.zero ~m:1 ~n:(l'-1); create_matrix Zp.one ~m:1 ~n:1 ];
+         [ diag_y; create_matrix Zp.zero ~m:l ~n:(l'-1); create_matrix Zp.zero ~m:l ~n:1 ]]
+        
+    let kE_vector y =
+      Zp.one :: (mk_list Zp.zero (L.length y))
+
+    let sD_vector xM y =
+      let a = match get_a xM y with
+        | None -> mk_list Zp.zero (L.length y) (* Decryption failed *)
+        | Some a -> expand_a [] a y
+      in
+      L.map2_exn y a ~f:(fun yi ai -> Zp.mul yi ai)
+        
+    let rD_vector xM y =
+      let a = match get_a xM y with
+        | None -> mk_list Zp.zero (L.length y) (* Decryption failed *)
+        | Some a -> expand_a [] a y
+      in
+      Zp.one :: a
+        
+    let set_x = function
+      | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
+         pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int:Zp.from_int policy
+      | _ -> failwith "wrong input"
+
+    let set_y = function
+      | BoolForm_Attrs (nattrs, rep, attrs) ->
+         pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep (L.map attrs ~f:(fun a -> Leaf(a)))
+      | _ -> failwith "wrong input"
 
 
   (* *** String converions *)
 
-  let sep1 = "#"
-  let sep2 = ";"
+    let sep1 = "#"
+    let sep2 = ";"
 
-  let string_of_x x =
-    list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
+    let string_of_x x =
+      list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
 
-  let string_of_y y =
-    list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
+    let string_of_y y =
+      list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
 
-  let x_of_string str =
-    L.map (S.split ~on:(Char.of_string sep1) str)
-      ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep1) str)
+        ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
 
-  let y_of_string str =
-    L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
-
-end
+    let y_of_string str =
+      L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
+  end
+  in
+  (module Characterization : PredEnc_Characterization)
