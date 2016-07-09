@@ -71,7 +71,7 @@ let join_blocks blocks =
   join_col (L.map blocks ~f:join_row)
 
 let add_matrices ~add m1 m2 =
-  L.map2_exn m1 m2 ~f:(fun row1 row2 -> L.map2_exn row1 row2 ~f:add)       
+  L.map2_exn m1 m2 ~f:(fun row1 row2 -> L.map2_exn row1 row2 ~f:add)
 
 
 module MyGaussElim (Field : Field) = struct
@@ -153,7 +153,7 @@ module MyGaussElim (Field : Field) = struct
     else
       let add = Field.add in
       let mul = Field.mul in
-      let mD' = L.map (list_range n (m+n-r)) ~f:(fun i -> L.slice (L.nth_exn reduced i) n (n+m)) in
+      let mD' = L.map (list_range n (m+r)) ~f:(fun i -> L.slice (L.nth_exn reduced i) n (n+m)) in
       if L.length mD' = 0 then mM
       else
         let mD = transpose_matrix mD' in

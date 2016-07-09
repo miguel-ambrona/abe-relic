@@ -356,30 +356,25 @@ module B = (val make_BilinearGroup 2)
 let bn_of_int i = Zp.read_str (string_of_int i)
 
 let test_predEnc () =
- 
-  let matrix = [[1;0;-3;0;2;-8];[0;1;5;0;-1;4];[0;0;0;1;7;-9];[0;0;0;0;0;0]] in
-(*  let matrix = [[1;2]] in*)
-  let matrix = L.map matrix ~f:(L.map ~f:(Zp.from_int)) in
-
-  let module M = MyGaussElim (Zp) in
-  let ps = M.pseudo_inverse matrix in
-  F.printf "%a\n%a\n" (pp_matrix Zp.pp) matrix (pp_matrix Zp.pp) ps;
   
   let n_attrs = 6 in      (* Global number of attributes *)
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
   let and_bound = 3 in    (* Bound on the number of AND gates *)
 
-  let n = n_attrs * repetitions + and_bound + 1 in
-  let module C1 = (val make_BF_PredEnc_Characterization n) in
-  let module C2 = (val make_BF_PredEnc_Characterization n) in
+  let s = n_attrs * repetitions in
+  let r = n_attrs * repetitions + 1 in
+  let w = n_attrs * repetitions + and_bound + 1 in
+
+  let module C1 = (val make_BF_PredEnc_Characterization s r w) in
+  let module C2 = (val make_BF_PredEnc_Characterization s r w) in
   let module C = Disjuction_Characterizations (C1) (C2) in
   let module C = Dual_Characterization (C) in
+  let module C = Negation_Characterization (C) in
   let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let t1 = Unix.gettimeofday() in
-  
-  let mpk, msk = ABE.setup ~n:(2*n+1) () in
+  let mpk, msk = ABE.setup ~n:(84) () in
   let attributes = [ phd_att; cs_att; ] in
   let xM = ABE.set_x (Predicates.GenericAttPair(
     BoolForm_Attrs(n_attrs, repetitions, attributes),
@@ -408,7 +403,7 @@ let test_predEnc () =
 
   let t2 = Unix.gettimeofday() in
   
-  if (B.Gt.equal msg msg') && not(B.Gt.equal msg msg'') then
+  if not (B.Gt.equal msg msg') && (B.Gt.equal msg msg'') then
     F.printf "Predicate Encodings ABE test succedded!\n Time: %F seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Predicate Encodings test failed"

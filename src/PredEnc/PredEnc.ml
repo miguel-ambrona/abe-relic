@@ -35,6 +35,10 @@ module type PredEnc_Characterization = sig
   type y
   val predicate : x -> y -> bool
     
+  val s : int
+  val r : int
+  val w : int
+
   val sE_matrix : x -> Zp.t list list
   val rE_matrix : y -> Zp.t list list
   val kE_vector : y -> Zp.t list
@@ -80,6 +84,10 @@ module Disjuction_Characterizations (C1 : PredEnc_Characterization) (C2 : PredEn
 
   let predicate (x1,x2) (y1,y2) = (C1.predicate x1 y1) || (C2.predicate x2 y2)
 
+  let s = C1.s + C2.s
+  let r = C1.r + C2.r
+  let w = C1.w + C2.w
+
   let sE_matrix (x1,x2) = diag_join (C1.sE_matrix x1) (C2.sE_matrix x2)
   let rE_matrix (y1,y2) = diag_join (C1.rE_matrix y1) (C2.rE_matrix y2)
   let kE_vector (y1,y2) = (C1.kE_vector y1) @ (C2.kE_vector y2)
@@ -111,6 +119,66 @@ module Disjuction_Characterizations (C1 : PredEnc_Characterization) (C2 : PredEn
 
 end
 
+module Negation_Characterization (C : PredEnc_Characterization) = struct
+
+  type x = C.x
+  type y = C.y
+
+  module M = MyGaussElim (Zp)
+  module GaussElim = LinAlg(Zp)
+
+  let predicate x y = not (C.predicate x y)
+  
+  let s = C.w
+  let r = C.w + 1 + C.w 
+  let w = C.r + C.w + C.s
+
+  let sE_matrix x =
+    join_blocks [[ create_matrix Zp.zero ~m:s ~n:C.r;
+                   identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:s;
+                   L.map (transpose_matrix (C.sE_matrix x)) ~f:(L.map ~f:Zp.neg) ]]
+  let rE_matrix y =
+    let mAr = C.rE_matrix y in
+    let mAr' = M.pseudo_inverse mAr in
+    let id_r = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:C.w in
+    let m12 =
+      add_matrices ~add:(fun a b -> Zp.add a (Zp.neg b)) id_r
+        (transpose_matrix (matrix_times_matrix ~add:Zp.add ~mul:Zp.mul mAr' mAr))
+    in
+    let k = C.kE_vector y in
+    let m22 = matrix_times_matrix ~add:Zp.add ~mul:Zp.mul [k] (transpose_matrix mAr') in
+    join_blocks [
+      [ create_matrix Zp.zero ~m:C.w ~n:C.r; m12; create_matrix Zp.zero ~m:C.w ~n:C.s ];
+      [ [L.map k ~f:Zp.neg]; m22; create_matrix Zp.zero ~m:1 ~n:C.s];
+      [ transpose_matrix mAr; create_matrix Zp.zero ~m:C.w ~n:C.w; create_matrix Zp.zero ~m:C.w ~n:C.s]
+    ]
+  let kE_vector _y = 
+    let zeros = mk_list Zp.zero C.w in
+    zeros @ [Zp.one] @ zeros
+
+  let sD_vector x y =
+    let matrix = join_blocks [[C.sE_matrix x]; [C.rE_matrix y]] in
+    let b = (mk_list Zp.zero C.s) @ (C.kE_vector y) in
+    match GaussElim.solve matrix b with
+    | None -> mk_list Zp.zero s (* Decryption failed *)
+    | Some w' -> w'
+       
+  let rD_vector x y =
+    let matrix = join_blocks [[C.sE_matrix x]; [C.rE_matrix y]] in
+    let b = (mk_list Zp.zero C.s) @ (C.kE_vector y) in
+    match GaussElim.solve matrix b with
+    | None -> mk_list Zp.zero r (* Decryption failed *)
+    | Some w' -> w' @ [Zp.one] @ w'
+
+  let set_x = C.set_x
+  let set_y = C.set_y
+
+  let string_of_x = C.string_of_x
+  let string_of_y = C.string_of_y
+  let x_of_string = C.x_of_string
+  let y_of_string = C.y_of_string
+end
+
 
 module Dual_Characterization (C : PredEnc_Characterization) = struct
 
@@ -119,6 +187,10 @@ module Dual_Characterization (C : PredEnc_Characterization) = struct
 
   let predicate x y = C.predicate y x
   
+  let s = C.r
+  let r = C.s + 1
+  let w = C.w + 1
+
   let sE_matrix x = join_blocks [[ C.rE_matrix x; (L.map (C.kE_vector x) ~f:(fun a -> [a])) ]]
   let rE_matrix y =
     let mAs = C.sE_matrix y in
@@ -136,7 +208,6 @@ module Dual_Characterization (C : PredEnc_Characterization) = struct
   let x_of_string str = C.y_of_string str
   let y_of_string str = C.x_of_string str
 end
-
 
 module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
 
@@ -230,7 +301,7 @@ module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
 end
 
 
-let make_BF_PredEnc_Characterization (w_length : int) =
+let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
 
   let module Characterization = struct
 
@@ -259,6 +330,10 @@ let make_BF_PredEnc_Characterization (w_length : int) =
       match get_a xM y with
       | None -> false
       | Some _ -> true
+
+    let s = s
+    let r = r
+    let w = w
          
     let sE_matrix xM =
       let id_n = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:(L.length xM) in
@@ -268,7 +343,7 @@ let make_BF_PredEnc_Characterization (w_length : int) =
 
     let rE_matrix y =
       let l = L.length y in
-      let l' = w_length - l in
+      let l' = w - l in
       let diag_y = diagonal_matrix ~zero:Zp.zero y in
       join_blocks
         [[ create_matrix Zp.zero ~m:1 ~n:l; create_matrix Zp.zero ~m:1 ~n:(l'-1); create_matrix Zp.one ~m:1 ~n:1 ];
