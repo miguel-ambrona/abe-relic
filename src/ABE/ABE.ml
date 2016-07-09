@@ -356,7 +356,15 @@ module B = (val make_BilinearGroup 2)
 let bn_of_int i = Zp.read_str (string_of_int i)
 
 let test_predEnc () =
+ 
+  let matrix = [[1;0;-3;0;2;-8];[0;1;5;0;-1;4];[0;0;0;1;7;-9];[0;0;0;0;0;0]] in
+(*  let matrix = [[1;2]] in*)
+  let matrix = L.map matrix ~f:(L.map ~f:(Zp.from_int)) in
 
+  let module M = MyGaussElim (Zp) in
+  let ps = M.pseudo_inverse matrix in
+  F.printf "%a\n%a\n" (pp_matrix Zp.pp) matrix (pp_matrix Zp.pp) ps;
+  
   let n_attrs = 6 in      (* Global number of attributes *)
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
   let and_bound = 3 in    (* Bound on the number of AND gates *)

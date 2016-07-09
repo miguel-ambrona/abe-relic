@@ -1,5 +1,6 @@
 open Abbrevs
 open Util
+open LinAlg
 
 (*
    vector = 'a list
@@ -68,3 +69,97 @@ let join_blocks blocks =
       ~f:(fun row1 row2 -> row1 @ row2)
   in
   join_col (L.map blocks ~f:join_row)
+
+let add_matrices ~add m1 m2 =
+  L.map2_exn m1 m2 ~f:(fun row1 row2 -> L.map2_exn row1 row2 ~f:add)       
+
+
+module MyGaussElim (Field : Field) = struct
+
+  (* ** Types and utility functions
+   * ----------------------------------------------------------------------- *)
+  type t = Field.t
+  let add = Field.add
+  let mul = Field.mul
+  let inv = Field.inv
+  let neg = Field.neg
+  let one = Field.one
+  let zero = Field.zero
+  let is_zero = Field.is_zero
+
+  let swap_rows i j matrix =
+    let rowi = L.nth_exn matrix i in
+    let rowj = L.nth_exn matrix j in
+    L.map (list_range 0 (L.length matrix))
+      ~f:(fun k -> if k = i then rowj else if k = j then rowi else L.nth_exn matrix k)
+
+  let reduce_by_pivot row col pivot matrix =
+    let inv_pivot = inv pivot in
+    let relevant_row = L.map (L.nth_exn matrix row) ~f:(Field.mul inv_pivot) in
+    L.map (list_range 0 (L.length matrix))
+      ~f:(fun k ->
+        if k = row then relevant_row
+        else
+          let this_row = L.nth_exn matrix k in
+          let column_element = L.nth_exn this_row col in
+          L.map2_exn this_row relevant_row ~f:(fun a b -> add a (neg (mul b column_element)) )
+      )
+
+  let search_for_non_zero starting_row col matrix =
+    let m = L.length matrix in
+    let rec go k =
+      if k >= m then None
+      else
+        let el = L.nth_exn (L.nth_exn matrix k) col in
+        if not (is_zero el) then Some (el, k)
+        else go (k+1)
+    in
+    go starting_row
+
+  let only_zeros list = not (L.exists list ~f:(fun el -> not (Field.is_zero el)))
+
+  let gaussian_elimination matrix =
+    let n = L.length (L.hd_exn matrix) in
+    let rec go reduced k =
+      if k >= n then reduced
+      else
+        (* We search for a non-zero in column k and rows >= k *)
+        match search_for_non_zero k k reduced with
+        | None -> go reduced (k+1)
+        | Some (el,row) ->
+           let reduced = swap_rows row k reduced in
+           go (reduce_by_pivot k k el reduced) (k+1)
+    in
+    go matrix 0
+
+  let kernel matrix =
+    let m = L.length matrix in
+    let n = L.length (L.hd_exn matrix) in
+    let id_n = identity_matrix ~zero:Field.zero ~one:Field.one ~n in
+    gaussian_elimination (transpose_matrix (join_blocks [[matrix]; [id_n]]))
+    |> L.filter ~f:(fun col -> only_zeros (L.slice col 0 m))
+    |> L.map ~f:(fun col -> L.slice col m (m+n))
+
+  let rec pseudo_inverse matrix =
+    let m = L.length matrix in
+    let n = L.length (L.hd_exn matrix) in
+    let ker = kernel matrix in
+    let r = L.length ker in
+    let id_m = identity_matrix ~zero:Field.zero ~one:Field.one ~n:m in
+    let zeros_rm = create_matrix Field.zero ~m:r ~n:m in
+    let reduced = gaussian_elimination (join_blocks [[matrix; id_m]; [ker; zeros_rm]]) in
+    let mM = L.map (list_range 0 n) ~f:(fun i -> L.slice (L.nth_exn reduced i) n (n+m)) in
+    if r = 0 then mM
+    else
+      let add = Field.add in
+      let mul = Field.mul in
+      let mD' = L.map (list_range n (m+n-r)) ~f:(fun i -> L.slice (L.nth_exn reduced i) n (n+m)) in
+      if L.length mD' = 0 then mM
+      else
+        let mD = transpose_matrix mD' in
+        let mD'D_inv = pseudo_inverse (matrix_times_matrix ~add ~mul mD' mD) in
+        add_matrices ~add:(fun a b -> add a (Field.neg b))
+          mM
+          (matrix_times_matrix ~add ~mul mM 
+             (matrix_times_matrix ~add ~mul mD (matrix_times_matrix ~add ~mul mD'D_inv mD')))
+end

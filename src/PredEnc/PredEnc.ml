@@ -231,13 +231,13 @@ end
 
 
 let make_BF_PredEnc_Characterization (w_length : int) =
-  
+
   let module Characterization = struct
-      
+
     (* Predicate Encoding Characterization for Ciphertet-Policy ABE for boolean formulas *)
-      
+
     module GaussElim = LinAlg(Zp)
-      
+
     let rec expand_a output a = function
       | [] -> if a = [] then output else assert false
       | yi :: rest_y ->
