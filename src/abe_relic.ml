@@ -4,11 +4,7 @@ open Core_kernel.Std
 open Abbrevs
 open Printf
 open Util
-open ABE
 open Eval
-open DualSystemG
-open MakeAlgebra
-open PredEnc
 
 let split_string_on_word string word =
   let n = String.length word in
@@ -43,11 +39,6 @@ let search_argument a =
   | _ -> raise Not_found
 
 let main =
-  let module DSG = Hoeteck's_DSG in
-  let module PE = Boolean_Formula_PredEnc in
-  let module B = (val make_BilinearGroup 2) in
-
-  let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let man = F.sprintf "usage: %s\n" Sys.argv.(0) in
   if Array.length Sys.argv = 1 then
@@ -61,8 +52,7 @@ let main =
        let pp = Parse.pp_cmds (input_file pp_file) |> Eval.eval_pp_cmds in
 
        let module ABE = (val Analyze.abe_from_pp pp) in
-       let n = Analyze.get_setup_size pp in
-       let mpk, msk = ABE.setup ~n () in
+       let mpk, msk = ABE.setup () in
               
        let out_mpk_file = open_out mpk_file in
        fprintf out_mpk_file "%s\nmpk = %s." (Eval.string_of_pp pp) (ABE.string_of_mpk mpk);

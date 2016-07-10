@@ -25,7 +25,8 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
     let par_T  = n_attributes
   end
   in
-  let module ABE1 = PredEncABE (B) (DSG) (Boolean_Formula_PredEnc) in
+  let module PE = (val make_BF_PredEnc (n_attributes * rep + and_gates + 1)) in
+  let module ABE1 = PredEncABE (B) (DSG) (PE) in
   let module ABE2 = PairEncABE (B) (DSG) (Boolean_Formula_PairEnc (Par)) in
 
   let key_size = 1 + Rand.int n_attributes in
@@ -39,7 +40,7 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
   (* ** Predicate-Encodings *)
   
   let t1 = Unix.gettimeofday() in
-  let mpk, msk = ABE1.setup ~n:(n_attributes * rep + and_gates + 1) () in
+  let mpk, msk = ABE1.setup () in
   
   let t2 = Unix.gettimeofday() in
   let xM  = ABE1.set_x (Predicates.BoolForm_Policy(n_attributes, rep, and_gates, policy)) in
@@ -112,7 +113,8 @@ let predEnc_test  ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attr
 
   let module DSG = Hoeteck's_DSG in
   let module B = (val make_BilinearGroup 2) in
-  let module ABE = PredEncABE (B) (DSG) (Boolean_Formula_PredEnc) in
+  let module PE = (val make_BF_PredEnc (n_attributes * rep + and_gates + 1)) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let key_size = 1 + Rand.int n_attributes in
   let key_attributes = random_permutation ~len:key_size attributes in
@@ -126,7 +128,7 @@ let predEnc_test  ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attr
   (* ** Predicate-Encodings *)
   
   let t1 = Unix.gettimeofday() in
-  let mpk, msk = ABE.setup ~n:(n_attributes * rep + and_gates + 1) () in
+  let mpk, msk = ABE.setup () in
   
   let t2 = Unix.gettimeofday() in
   let xM  = ABE.set_x (Predicates.BoolForm_Policy(n_attributes, rep, and_gates, policy)) in

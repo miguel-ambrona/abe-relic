@@ -14,6 +14,8 @@ module type PredEnc =
     sig
       type x
       type y
+      val n : int
+
       val sE : x -> B.G1.t list -> B.G1.t list
       val rE : y -> B.G2.t list -> B.G2.t list
       val kE : y -> B.G2.t -> B.G2.t list
@@ -57,6 +59,8 @@ end
 module PredEnc_from_Characterization (C : PredEnc_Characterization) (B : BilinearGroup) = struct
     type x = C.x
     type y = C.y
+
+    let n = C.w
 
     let sE x w = matrix_times_vector ~add:B.G1.add ~mul:(fun a g -> B.G1.mul g a) (C.sE_matrix x) w
     let rE y w = matrix_times_vector ~add:B.G2.add ~mul:(fun a g -> B.G2.mul g a) (C.rE_matrix y) w
@@ -209,96 +213,103 @@ module Dual_Characterization (C : PredEnc_Characterization) = struct
   let y_of_string str = C.x_of_string str
 end
 
-module Boolean_Formula_PredEnc (B : BilinearGroup) = struct
 
-  (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
-
-  module GaussElim = LinAlg(Zp)
-
-  type x = Zp.t list list
-  type y = Zp.t list
+let make_BF_PredEnc (n : int) =
+  
+  let module BF_PredEnc (B : BilinearGroup) = struct
       
-  let sE xM w_u_u0 =
-    let ( +! ) = L.map2_exn ~f:B.G1.add in
-    let l = L.length xM in
-    let l' = L.length (L.hd_exn xM) in
-    let w = L.slice w_u_u0 0 l in
-    let u = L.slice w_u_u0 l (l+l'-1) in
-    let u0 = L.hd_exn (L.tl_exn w_u_u0) in
-    w +! (matrix_times_vector ~add:B.G1.add ~mul:(fun exp g -> B.G1.mul g exp) xM (u0 :: u))
+    (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
+      
+    module GaussElim = LinAlg(Zp)
+      
+    type x = Zp.t list list
+    type y = Zp.t list
 
-  let rE y w_u_u0 =
-    let l = L.length y in
-    let w = L.slice w_u_u0 0 l in
-    let u0 = L.hd_exn (L.tl_exn w_u_u0) in
-    u0 :: (L.map2_exn ~f:B.G2.mul w y)
+    let n = n
       
-  let kE y alpha =
-    alpha :: (mk_list B.G2.zero (L.length y))
-      
-  let sD xM y c =
-    let l' = L.length (L.hd_exn xM) in
-    let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-    if filtered = [] then B.G1.zero (* No attributes in the key *)
-    else
-      let matrix = transpose_matrix filtered in
-      match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
-      | None -> B.G1.zero (* Decryption failed *)
-      | Some a ->
-         let y_c = L.filter (L.zip_exn c y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-         let a_y_c = L.map2_exn ~f:B.G1.mul y_c a in
-         L.fold_left (L.tl_exn a_y_c)
-           ~init:(L.hd_exn a_y_c)
-           ~f:B.G1.add
-           
-  let rD xM y d_d' =
-    let l' = L.length (L.hd_exn xM) in
-    let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-    if filtered = [] then B.G2.zero (* No attributes in the key *)
-     else
-      let matrix = transpose_matrix filtered in
-      match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
-      | None -> B.G2.zero (* Decryption failed *)
-      | Some a ->
-         let d' = L.hd_exn d_d' in
-         let d = L.tl_exn d_d' in
-         let d = L.filter (L.zip_exn d y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
-         let a_d = L.map2_exn ~f:B.G2.mul d a in
-         B.G2.add
-           d'
-           (L.fold_left (L.tl_exn a_d)
-              ~init:(L.hd_exn a_d)
-              ~f:B.G2.add)
-      
-  let set_x = function
-    | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
-       pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int:Zp.from_int policy
-    | _ -> failwith "wrong input"
+    let sE xM w_u_u0 =
+      let ( +! ) = L.map2_exn ~f:B.G1.add in
+      let l = L.length xM in
+      let l' = L.length (L.hd_exn xM) in
+      let w = L.slice w_u_u0 0 l in
+      let u = L.slice w_u_u0 l (l+l'-1) in
+      let u0 = L.hd_exn (L.tl_exn w_u_u0) in
+      w +! (matrix_times_vector ~add:B.G1.add ~mul:(fun exp g -> B.G1.mul g exp) xM (u0 :: u))
 
-  let set_y = function
-    | BoolForm_Attrs (nattrs, rep, attrs) ->
-       pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep (L.map attrs ~f:(fun a -> Leaf(a)))
-    | _ -> failwith "wrong input"
+    let rE y w_u_u0 =
+      let l = L.length y in
+      let w = L.slice w_u_u0 0 l in
+      let u0 = L.hd_exn (L.tl_exn w_u_u0) in
+      u0 :: (L.map2_exn ~f:B.G2.mul w y)
+        
+    let kE y alpha =
+      alpha :: (mk_list B.G2.zero (L.length y))
+        
+    let sD xM y c =
+      let l' = L.length (L.hd_exn xM) in
+      let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+      if filtered = [] then B.G1.zero (* No attributes in the key *)
+      else
+        let matrix = transpose_matrix filtered in
+        match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
+        | None -> B.G1.zero (* Decryption failed *)
+        | Some a ->
+           let y_c = L.filter (L.zip_exn c y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+           let a_y_c = L.map2_exn ~f:B.G1.mul y_c a in
+           L.fold_left (L.tl_exn a_y_c)
+             ~init:(L.hd_exn a_y_c)
+             ~f:B.G1.add
+             
+    let rD xM y d_d' =
+      let l' = L.length (L.hd_exn xM) in
+      let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+      if filtered = [] then B.G2.zero (* No attributes in the key *)
+      else
+        let matrix = transpose_matrix filtered in
+        match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
+        | None -> B.G2.zero (* Decryption failed *)
+        | Some a ->
+           let d' = L.hd_exn d_d' in
+           let d = L.tl_exn d_d' in
+           let d = L.filter (L.zip_exn d y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+           let a_d = L.map2_exn ~f:B.G2.mul d a in
+           B.G2.add
+             d'
+             (L.fold_left (L.tl_exn a_d)
+                ~init:(L.hd_exn a_d)
+                ~f:B.G2.add)
+             
+    let set_x = function
+      | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
+         pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int:Zp.from_int policy
+      | _ -> failwith "wrong input"
+
+    let set_y = function
+      | BoolForm_Attrs (nattrs, rep, attrs) ->
+         pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep (L.map attrs ~f:(fun a -> Leaf(a)))
+      | _ -> failwith "wrong input"
 
 
   (* *** String converions *)
 
-  let sep1 = "#"
-  let sep2 = ";"
+    let sep1 = "#"
+    let sep2 = ";"
 
-  let string_of_x x =
-    list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
+    let string_of_x x =
+      list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
 
-  let string_of_y y =
-    list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
+    let string_of_y y =
+      list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
 
-  let x_of_string str =
-    L.map (S.split ~on:(Char.of_string sep1) str)
-      ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep1) str)
+        ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
 
-  let y_of_string str =
-    L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
-end
+    let y_of_string str =
+      L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
+  end
+  in
+  (module BF_PredEnc : PredEnc)
 
 
 let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =

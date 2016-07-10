@@ -13,7 +13,8 @@ let abe_from_pp pp =
   let module DSG = Hoeteck's_DSG in
   match pp.pp_scheme, pp.pp_encoding, pp.pp_predicate with
   | Some CP_ABE, Some PredicateEncoding, Some BoolForm(_,_,_) -> 
-     (module PredEncABE (B) (DSG) (Boolean_Formula_PredEnc) : ABE)
+     let module PE = (val make_BF_PredEnc 3) in
+     (module PredEncABE (B) (DSG) (PE) : ABE)
   | Some CP_ABE, Some PairEncoding, Some BoolForm(n1,n2,t) ->
      let module Par = struct
          let par_n1 = n1
