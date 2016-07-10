@@ -77,7 +77,7 @@ module PredEnc_from_Characterization (C : PredEnc_Characterization) (B : Bilinea
     let y_of_string = C.y_of_string
 end
 
-module Disjuction_Characterizations (C1 : PredEnc_Characterization) (C2 : PredEnc_Characterization) = struct
+module Disjunction_Characterization (C1 : PredEnc_Characterization) (C2 : PredEnc_Characterization) = struct
 
   let diag_join m1 m2 =
     join_blocks [[ m1; create_matrix Zp.zero ~m:(L.length m1) ~n:(L.length (L.hd_exn m2))];
@@ -183,6 +183,34 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
   let y_of_string = C.y_of_string
 end
 
+module Conjunction_Characterization  (C1 : PredEnc_Characterization) (C2 : PredEnc_Characterization) = struct
+    module Neg1 = Negation_Characterization (C1)
+    module Neg2 = Negation_Characterization (C2)
+    module D = Disjunction_Characterization (Neg1) (Neg2)
+    module C = Negation_Characterization (D)
+
+    type x = C.x
+    type y = C.y
+    let predicate = C.predicate
+    let s = C.s
+    let r = C.r
+    let w = C.w
+
+    let sE_matrix = C.sE_matrix
+    let rE_matrix = C.rE_matrix
+    let kE_vector = C.kE_vector
+    let sD_vector = C.sD_vector
+    let rD_vector = C.rD_vector
+
+    let set_x = C.set_x
+    let set_y = C.set_y
+
+    let string_of_x = C.string_of_x
+    let string_of_y = C.string_of_y
+    let x_of_string = C.x_of_string
+    let y_of_string = C.y_of_string
+end
+    
 
 module Dual_Characterization (C : PredEnc_Characterization) = struct
 

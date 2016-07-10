@@ -81,7 +81,7 @@ let test_predEnc_Disjunction () =
 
   let module C1 = (val make_BF_PredEnc_Characterization s r w) in
   let module C2 = (val make_BF_PredEnc_Characterization s r w) in
-  let module C = Disjuction_Characterizations (C1) (C2) in
+  let module C = Disjunction_Characterization (C1) (C2) in
   let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
@@ -160,6 +160,59 @@ let test_predEnc_Negation () =
     F.printf "Negation Pred. Enc. ABE test succedded!\t Time: \027[32m%F\027[0m seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Negation Predicate Encodings test failed"
+
+
+let test_predEnc_Conjunction () =
+  
+  let n_attrs = 6 in      (* Global number of attributes *)
+  let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
+  let and_bound = 3 in    (* Bound on the number of AND gates *)
+
+  let s = n_attrs * repetitions in
+  let r = n_attrs * repetitions + 1 in
+  let w = n_attrs * repetitions + and_bound + 1 in
+
+  let module C1 = (val make_BF_PredEnc_Characterization s r w) in
+  let module C2 = (val make_BF_PredEnc_Characterization s r w) in
+  let module C = Conjunction_Characterization (C1) (C2) in
+  let module PE = PredEnc_from_Characterization (C) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  let xM = ABE.set_x (Predicates.GenericAttPair(
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy1),
+    BoolForm_Policy(n_attrs, repetitions, and_bound, policy2)
+  )) in
+
+  let msg = ABE.rand_msg () in
+  let ct_x = ABE.enc mpk xM msg in
+  
+  let attributes = [ phd_att; cs_att; dark_att; handsome_att; tall_att ] in
+  let y = ABE.set_y (Predicates.GenericAttPair(
+    BoolForm_Attrs(n_attrs, repetitions, attributes),
+    BoolForm_Attrs(n_attrs, repetitions, attributes)
+  )) in
+
+
+  let sk_y = ABE.keyGen mpk msk y in
+  let msg' = ABE.dec mpk sk_y ct_x in
+
+  let attributes = [ phd_att; maths_att; handsome_att; dark_att ] in
+  let y' = ABE.set_y (Predicates.GenericAttPair(
+    BoolForm_Attrs(n_attrs, repetitions, attributes),
+    BoolForm_Attrs(n_attrs, repetitions, attributes)
+  )) in
+
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
+
+  let t2 = Unix.gettimeofday() in
+  
+  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
+    F.printf "Conj. Pred. Enc. ABE test succedded!\t Time: \027[32m%F\027[0m seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
+  else failwith "Conjunction Predicate Encodings test failed"
 
 
 let test_predEnc_Dual () =
