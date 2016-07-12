@@ -46,6 +46,8 @@ module type PredEnc_Characterization = sig
   val kE_vector : y -> Zp.t list
   val sD_vector : x -> y -> Zp.t list
   val rD_vector : x -> y -> Zp.t list
+
+  val get_witness : x -> y -> Zp.t list
     
   val set_x : generic_attribute -> x
   val set_y : generic_attribute -> y
@@ -106,6 +108,9 @@ module Disjunction_Characterization (C1 : PredEnc_Characterization) (C2 : PredEn
     if C1.predicate x1 y1 then b1 @ (L.map b2 ~f:(fun _ -> Zp.zero))
     else (L.map b1 ~f:(fun _ -> Zp.zero)) @ b2
 
+  let get_witness (x1,x2) (y1,y2) =
+    (C1.get_witness x1 y1) @ (C2.get_witness x2 y2)
+
   let set_x = function GenericAttPair(gx1, gx2) -> (C1.set_x gx1, C2.set_x gx2) | _ -> failwith "Pair of Generic Attributes expected"
   let set_y = function GenericAttPair(gy1, gy2) -> (C1.set_y gy1, C2.set_y gy2) | _ -> failwith "Pair of Generic Attributes expected"
 
@@ -161,18 +166,21 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
     zeros @ [Zp.one] @ zeros
 
   let sD_vector x y =
-    let matrix = join_blocks [[C.sE_matrix x]; [C.rE_matrix y]] in
-    let b = (mk_list Zp.zero C.s) @ (C.kE_vector y) in
-    match GaussElim.solve matrix b with
-    | None -> mk_list Zp.zero s (* Decryption failed *)
-    | Some w' -> w'
+    C.get_witness x y
        
   let rD_vector x y =
-    let matrix = join_blocks [[C.sE_matrix x]; [C.rE_matrix y]] in
-    let b = (mk_list Zp.zero C.s) @ (C.kE_vector y) in
-    match GaussElim.solve matrix b with
-    | None -> mk_list Zp.zero r (* Decryption failed *)
-    | Some w' -> w' @ [Zp.one] @ w'
+    let w' = C.get_witness x y in
+    w' @ [Zp.one] @ w'
+
+  let get_witness x y =
+    let mAs = C.sE_matrix x in
+    let mAr = C.rE_matrix y in
+    let mAr' = M.pseudo_inverse mAr in
+    let bs = C.sD_vector x y in
+    let br = C.rD_vector x y in
+    let mAst_bs = matrix_times_vector ~add:Zp.add ~mul:Zp.mul (transpose_matrix mAs) bs in
+    let aux = matrix_times_vector ~add:Zp.add ~mul:Zp.mul (transpose_matrix mAr') mAst_bs in
+    (L.map2_exn aux br ~f:(fun a b -> Zp.add a (Zp.neg b))) @ mAst_bs @ bs
 
   let set_x = C.set_x
   let set_y = C.set_y
@@ -202,6 +210,8 @@ module Conjunction_Characterization  (C1 : PredEnc_Characterization) (C2 : PredE
     let sD_vector = C.sD_vector
     let rD_vector = C.rD_vector
 
+    let get_witness = C.get_witness
+      
     let set_x = C.set_x
     let set_y = C.set_y
 
@@ -231,6 +241,8 @@ module Dual_Characterization (C : PredEnc_Characterization) = struct
   let kE_vector y = (mk_list Zp.zero (L.length (C.sE_matrix y))) @ [Zp.one]
   let sD_vector x y = C.rD_vector y x
   let rD_vector x y = (C.sD_vector y x) @ [Zp.one]
+
+  let get_witness x y = (L.map (C.get_witness y x) ~f:Zp.neg) @ [Zp.one]
 
   let set_x x = C.set_y x
   let set_y y = C.set_x y
@@ -404,7 +416,14 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
         | Some a -> expand_a [] a y
       in
       Zp.one :: a
-        
+
+    let get_witness xM y =
+      let matrix = join_blocks [[sE_matrix xM]; [rE_matrix y]] in
+      let b = (mk_list Zp.zero s) @ (kE_vector y) in
+      match GaussElim.solve matrix b with
+      | None -> mk_list Zp.zero (L.length (L.hd_exn matrix)) (* Decryption failed *)
+      | Some w' -> w'
+
     let set_x = function
       | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
          pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int:Zp.from_int policy
