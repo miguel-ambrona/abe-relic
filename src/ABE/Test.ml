@@ -255,6 +255,82 @@ let test_predEnc_Dual () =
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Dual Predicate Encodings test failed"
 
+
+let test_predEnc_Revocation () =
+
+  let n_attrs = 6 in
+  let repetitions = 1 in
+  let and_bound = 3 in
+
+  let spanish      = Att(1) in
+  let _american    = Att(2) in
+  let comedy       = Att(3) in
+  let _fiction     = Att(4) in
+  let breaking_bad = Att(5) in
+  let year_2016    = Att(6) in
+
+  let film_attrs = [ spanish; comedy; year_2016 ] in
+  let user_policy = (Leaf(breaking_bad) |. (Leaf(spanish) &. Leaf(comedy))) in
+
+  let s = n_attrs * repetitions in
+  let r = n_attrs * repetitions + 1 in
+  let w = n_attrs * repetitions + and_bound + 1 in
+
+  let n_attrs_rev = 5 in
+  let repetitions_rev = 1 in
+  let and_bound_rev = 3 in
+  let s' = n_attrs_rev * repetitions_rev in
+  let r' = n_attrs_rev * repetitions_rev + 1 in
+  let w' = n_attrs_rev * repetitions_rev + and_bound_rev + 1 in
+  
+  let revocated = [1; 2] in
+  let policy_rev = L.fold_left (L.tl_exn revocated)
+    ~init:(Leaf(Att(L.hd_exn revocated)))
+    ~f:(fun f i -> Or(f, Leaf(Att(i))) )
+  in
+
+  let module C1 = (val make_BF_PredEnc_Characterization s r w) in
+  let module C2 = (val make_BF_PredEnc_Characterization s' r' w') in
+  let module C1_dual = Dual_Characterization (C1) in
+  let module C1_neg = Negation_Characterization (C1_dual) in
+  let module C_neg = Disjunction_Characterization (C2) (C1_neg) in
+  let module C = Negation_Characterization (C_neg) in
+  let module PE = PredEnc_from_Characterization (C) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  let movie_info = ABE.set_x (Predicates.GenericAttPair(
+    BoolForm_Policy(n_attrs_rev, repetitions_rev, and_bound_rev, policy_rev),
+    BoolForm_Attrs(n_attrs, repetitions, film_attrs)
+  )) in
+
+  let movie_content = ABE.rand_msg () in
+  let ct = ABE.enc mpk movie_info movie_content in
+  
+  let user_info = ABE.set_y (Predicates.GenericAttPair(
+    BoolForm_Attrs(n_attrs_rev, repetitions_rev, [Att(3)]),
+    BoolForm_Policy(n_attrs, repetitions, and_bound, user_policy)
+  )) in
+
+  let sk = ABE.keyGen mpk msk user_info in
+  let decrypted = ABE.dec mpk sk ct in
+
+  let user_info' = ABE.set_y (Predicates.GenericAttPair(
+    BoolForm_Attrs(n_attrs_rev, repetitions_rev, [Att(1)]),
+    BoolForm_Policy(n_attrs, repetitions, and_bound, user_policy)
+  )) in
+
+  let sk' = ABE.keyGen mpk msk user_info' in
+  let decrypted' = ABE.dec mpk sk' ct in
+
+  let t2 = Unix.gettimeofday() in
+  
+  if (B.Gt.equal movie_content decrypted) && not (B.Gt.equal movie_content decrypted') then
+    F.printf "Revocation. Pred. Enc. test succedded!\t Time: \027[32m%F\027[0m seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
+  else failwith "Revocation Predicate Encodings test failed"
+
 let test_pairEnc () =
   
   let module Par = struct
@@ -288,4 +364,3 @@ let test_pairEnc () =
     F.printf "Pair Encodings ABE test succedded!\t Time: \027[32m%F\027[0m seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Pair Encodings test failed"
-   

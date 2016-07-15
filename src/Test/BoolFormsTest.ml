@@ -159,7 +159,6 @@ let predEnc_test  ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attr
 
   F.print_flush ();
   ()
-  
 
 let test algorithm =
   let out_file    = open_out "tests/bf_comparison.txt" in
