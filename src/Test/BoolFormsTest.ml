@@ -160,6 +160,51 @@ let predEnc_test  ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attr
   F.print_flush ();
   ()
 
+    
+let bigPredEnc_test n =
+    
+  let module DSG = Hoeteck's_DSG in
+  let module B = (val make_BilinearGroup 2) in
+  let module PE = (val make_BF_PredEnc (n + 1)) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+
+  let rec create_policy p k e =
+    if k = e then create_policy p (k+1) e
+    else if k > n then p
+    else create_policy (Or(p,Leaf(Att(k)))) (k+1) e
+  in
+  let policy = create_policy (Leaf(Att(1))) 2 7 in
+  
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  
+  let xM  = ABE.set_x (Predicates.BoolForm_Policy(n, 1, 0, policy)) in
+  let msg_rand = ABE.rand_msg () in
+  let ct_x = ABE.enc mpk xM msg_rand in
+
+  (*let t2 = Unix.gettimeofday() in
+  F.printf "Encryption:  %F seconds.\n" (round (t2 -. t1) 3.0); F.print_flush ();*)
+  
+  let y =  ABE.set_y (Predicates.BoolForm_Attrs(n, 1, [Att(5)])) in
+  let sk_y = ABE.keyGen mpk msk y in  
+  let msg = ABE.dec mpk sk_y ct_x in
+
+  (*let t3 = Unix.gettimeofday() in
+  F.printf "Decryption1: %F seconds.\n" (round (t3 -. t2) 3.0); F.print_flush ();*)
+  
+  let y' =  ABE.set_y (Predicates.BoolForm_Attrs(n, 1, [Att(7)])) in
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg' = ABE.dec mpk sk_y' ct_x in  
+  
+  let t4 = Unix.gettimeofday() in
+
+  assert (B.Gt.equal msg_rand msg);
+  assert (not (B.Gt.equal msg_rand msg'));
+  (*F.printf "Decryption2: %F seconds.\n" (round (t4 -. t3) 3.0); F.print_flush ();*)
+  (*F.printf "Big Predicate Encodings succeded in %F seconds.\n" (round (t4 -. t1) 3.0)*)
+  F.printf "%d, %F\n" n (round (t4 -. t1) 3.0); F.print_flush ()
+  
+  
 let test algorithm =
   let out_file    = open_out "tests/bf_comparison.txt" in
   let setup_file  = open_out "tests/setup_times.txt" in

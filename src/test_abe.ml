@@ -12,4 +12,10 @@ let main =
      Test.test_pairEnc ();
     )
   else
-    BoolFormsTest.test Sys.argv.(1)
+    for n = 10 to 10000 do
+      (if n % 5 = 0 then
+        BoolFormsTest.bigPredEnc_test n
+       else ()
+      );
+    done
+    (*    BoolFormsTest.test Sys.argv.(1) *)

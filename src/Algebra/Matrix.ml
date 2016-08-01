@@ -87,13 +87,14 @@ module MyGaussElim (Field : Field) = struct
   let zero = Field.zero
   let is_zero = Field.is_zero
 
-  let swap_rows i j matrix =
+  let swap_rows i j matrix det =
     let rowi = L.nth_exn matrix i in
     let rowj = L.nth_exn matrix j in
     L.map (list_range 0 (L.length matrix))
-      ~f:(fun k -> if k = i then rowj else if k = j then rowi else L.nth_exn matrix k)
+          ~f:(fun k -> if k = i then rowj else if k = j then rowi else L.nth_exn matrix k),
+    (if i = j then det else Field.neg det)
 
-  let reduce_by_pivot row col pivot matrix =
+  let reduce_by_pivot row col pivot matrix det =
     let inv_pivot = inv pivot in
     let relevant_row = L.map (L.nth_exn matrix row) ~f:(Field.mul inv_pivot) in
     L.map (list_range 0 (L.length matrix))
@@ -104,6 +105,7 @@ module MyGaussElim (Field : Field) = struct
           let column_element = L.nth_exn this_row col in
           L.map2_exn this_row relevant_row ~f:(fun a b -> add a (neg (mul b column_element)) )
       )
+    , Field.mul det inv_pivot
 
   let search_for_non_zero starting_row col matrix =
     let m = L.length matrix in
@@ -118,25 +120,39 @@ module MyGaussElim (Field : Field) = struct
 
   let only_zeros list = not (L.exists list ~f:(fun el -> not (Field.is_zero el)))
 
+  let prod_diagonal matrix =
+    let m = L.length matrix in
+    let rec aux prod k =
+      if k >= m then prod
+      else aux (Field.mul prod (L.nth_exn (L.nth_exn matrix k) k)) (k+1)
+    in
+    aux Field.one 0
+                            
   let gaussian_elimination matrix =
     let n = L.length (L.hd_exn matrix) in
-    let rec go reduced k =
-      if k >= n then reduced
+    let rec go reduced k det =
+      if k >= n then reduced, Field.mul (prod_diagonal reduced) (Field.inv det)
       else
         (* We search for a non-zero in column k and rows >= k *)
         match search_for_non_zero k k reduced with
-        | None -> go reduced (k+1)
+        | None -> go reduced (k+1) det
         | Some (el,row) ->
-           let reduced = swap_rows row k reduced in
-           go (reduce_by_pivot k k el reduced) (k+1)
+           let reduced, det = swap_rows row k reduced det in
+           let reduced, det = reduce_by_pivot k k el reduced det in
+           go reduced (k+1) det
     in
-    go matrix 0
+    go matrix 0 Field.one
 
+  let determinant matrix =
+    let _, det = gaussian_elimination matrix in
+    det
+       
   let kernel matrix =
     let m = L.length matrix in
     let n = L.length (L.hd_exn matrix) in
     let id_n = identity_matrix ~zero:Field.zero ~one:Field.one ~n in
-    gaussian_elimination (transpose_matrix (join_blocks [[matrix]; [id_n]]))
+    let reduced, _ = gaussian_elimination (transpose_matrix (join_blocks [[matrix]; [id_n]])) in
+    reduced
     |> L.filter ~f:(fun col -> only_zeros (L.slice col 0 m))
     |> L.map ~f:(fun col -> L.slice col m (m+n))
 
@@ -147,7 +163,7 @@ module MyGaussElim (Field : Field) = struct
     let r = L.length ker in
     let id_m = identity_matrix ~zero:Field.zero ~one:Field.one ~n:m in
     let zeros_rm = create_matrix Field.zero ~m:r ~n:m in
-    let reduced = gaussian_elimination (join_blocks [[matrix; id_m]; [ker; zeros_rm]]) in
+    let reduced, _ = gaussian_elimination (join_blocks [[matrix; id_m]; [ker; zeros_rm]]) in
     let mM = L.map (list_range 0 n) ~f:(fun i -> L.slice (L.nth_exn reduced i) n (n+m)) in
     if r = 0 then mM
     else

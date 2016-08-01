@@ -31,6 +31,12 @@ module DSG = Hoeteck's_DSG
 module B = (val make_BilinearGroup 2)
 
 let test_predEnc () =
+
+  let f = Zp.from_int in
+  let module M = Matrix.MyGaussElim(Zp) in
+  let matrix = [[f (-2); f 2; f (-3)];[f (-1); f 1; f 3]; [f 2; f 0; f (-1)]] in
+  let det = M.determinant matrix in
+  F.printf "\n\n%a\n\n" Zp.pp det; F.print_flush();
   
   let n_attrs = 6 in      (* Global number of attributes *)
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
