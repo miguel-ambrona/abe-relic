@@ -31,12 +31,6 @@ module DSG = Hoeteck's_DSG
 module B = (val make_BilinearGroup 2)
 
 let test_predEnc () =
-
-  let f = Zp.from_int in
-  let module M = Matrix.MyGaussElim(Zp) in
-  let matrix = [[f (-2); f 2; f (-3)];[f (-1); f 1; f 3]; [f 2; f 0; f (-1)]] in
-  let det = M.determinant matrix in
-  F.printf "\n\n%a\n\n" Zp.pp det; F.print_flush();
   
   let n_attrs = 6 in      (* Global number of attributes *)
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
@@ -337,6 +331,42 @@ let test_predEnc_Revocation () =
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Revocation Predicate Encodings test failed"
 
+                
+let test_predEnc_shareRoot () =
+
+  let s = 40 in
+  let r = 1 in
+
+  let module C = (val make_ShareRoot_PredEnc_Characterization s r) in
+  let module PE = PredEnc_from_Characterization (C) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+
+  let i = Zp.from_int in
+  
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  let x = ABE.set_x (Discriminant(s,r, [i 5; i 7; i 9; i 10])) in
+
+  let msg = ABE.rand_msg () in
+  let ct_x = ABE.enc mpk x msg in
+  
+  let y = ABE.set_y (Discriminant(s,r, [i 7])) in
+
+  let sk_y = ABE.keyGen mpk msk y in
+  let msg' = ABE.dec mpk sk_y ct_x in
+
+  let y' = ABE.set_y (Discriminant(s,r, [i 11])) in
+
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
+
+  let t2 = Unix.gettimeofday() in
+
+  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
+    F.printf "Pred Enc Roots ABE test succedded!\t Time: \027[32m%F\027[0m seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
+  else failwith "Predicate Encodings Roots test failed"
+                
 let test_pairEnc () =
   
   let module Par = struct

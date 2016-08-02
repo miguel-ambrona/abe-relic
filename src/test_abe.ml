@@ -4,6 +4,7 @@ open Abbrevs
 let main =
   if Array.length Sys.argv = 1 then
     (Test.test_predEnc (); F.print_flush ();
+     Test.test_predEnc_shareRoot (); F.print_flush ();
      Test.test_predEnc_Disjunction (); F.print_flush ();
      Test.test_predEnc_Negation (); F.print_flush ();
      Test.test_predEnc_Revocation (); F.print_flush ();

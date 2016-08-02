@@ -439,10 +439,10 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
 
     let sep1 = "#"
     let sep2 = ";"
-
+                 
     let string_of_x x =
       list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
-
+                          
     let string_of_y y =
       list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
 
@@ -452,6 +452,113 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
 
     let y_of_string str =
       L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
+  end
+  in
+  (module Characterization : PredEnc_Characterization)
+
+
+let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
+
+  let module Characterization = struct
+
+    (* Predicate Encoding Characterization for the predicate P(x,y) defined as
+         x(t) and y(t) are share a common factor in Zp[t]
+     *)
+      
+    module M = Matrix.MyGaussElim(Zp)
+    module GaussElim = LinAlg(Zp)
+                             
+    let half_discriminant v n =
+      let rec aux output k =
+        if k >= n then output
+        else
+          let new_row = (mk_list Zp.zero k) @ v @ (mk_list Zp.zero (n-k-1)) in
+          aux (output @ [new_row]) (k+1)
+      in
+      aux [] 0
+          
+    let discriminant_matrix x y =
+      (half_discriminant x r) @ (half_discriminant y s)
+
+    type x = Zp.t list
+    type y = Zp.t list
+
+    let predicate x y =
+      Zp.is_zero (M.determinant (discriminant_matrix x y))
+
+    let s = s
+    let r = r
+    let w = s + r
+         
+    let sE_matrix x =
+      half_discriminant x r
+
+    let rE_matrix y =
+      half_discriminant y s
+                        
+    let kE_vector _y =
+      mk_list Zp.one s
+                                  
+    let dec_vector x y =
+      let mX = half_discriminant x r |> transpose_matrix in
+      let mY = L.map (half_discriminant y s) ~f:(L.map ~f:Zp.neg) |> transpose_matrix in
+      let m = join_blocks [[mX; mY]; [[mk_list Zp.zero r]; [kE_vector y]]] in
+      match GaussElim.solve m ((mk_list Zp.zero (s+r)) @ [Zp.one]) with
+      | None -> mk_list Zp.zero (s+r) (* Decryption failed *)
+      | Some a -> a
+
+    let sD_vector x y =
+      L.slice (dec_vector x y) 0 r
+
+    let rD_vector x y =
+      L.slice (dec_vector x y) r (s+r)
+
+    let get_witness x y =
+      match  GaussElim.solve (discriminant_matrix x y) ((mk_list Zp.zero (s+r-1)) @ [Zp.one]) with
+      | None -> mk_list Zp.zero (s+r) (* Decryption failed *)
+      | Some w' -> w'
+
+    let poly_coeffs_from_roots roots =
+      let rec aux coeffs = function
+        | [] -> coeffs
+        | a :: rest_roots ->  (* We multiply by (x-a) *)
+           let neg_a = Zp.neg a in
+           let first_list  = coeffs @ [Zp.zero] in             (* Multiplication by x  *)
+           let second_list = L.map coeffs ~f:(Zp.mul neg_a) in (* Multiplication by -a *)
+           let new_coeffs = L.map2_exn first_list (Zp.zero :: second_list) ~f:Zp.add in
+           aux new_coeffs rest_roots
+      in
+      aux [Zp.one; Zp.neg (L.hd_exn roots)] (L.tl_exn roots)
+                     
+    let set_x = function   (* Reserved root for x is 0 *)
+      | Discriminant (_,_,roots) ->
+         if (L.length roots) > s then
+           failwith ("Too many roots for a polynomial of degree " ^ (string_of_int s))
+         else poly_coeffs_from_roots (roots @ (mk_list Zp.zero (s - (L.length roots))))
+      | _ -> failwith "wrong input"
+
+    let set_y = function   (* Reserved root for y is 1 *)
+      | Discriminant (_,_,roots) ->
+         if (L.length roots) > r then
+           failwith ("Too many roots for a polynomial of degree " ^ (string_of_int r))
+         else poly_coeffs_from_roots (roots @ (mk_list Zp.one (r - (L.length roots))))
+      | _ -> failwith "wrong input"
+
+(* *** String converions *)
+
+    let sep = "#"
+
+    let string_of_x x =
+      list_to_string ~sep:sep (L.map x ~f:Zp.write_str)
+
+    let string_of_y y =
+      list_to_string ~sep:sep (L.map y ~f:Zp.write_str)
+
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep) str) ~f:Zp.read_str
+            
+    let y_of_string str =
+      L.map (S.split ~on:(Char.of_string sep) str) ~f:Zp.read_str
   end
   in
   (module Characterization : PredEnc_Characterization)
