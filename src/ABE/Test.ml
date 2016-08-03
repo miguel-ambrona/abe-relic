@@ -366,6 +366,42 @@ let test_predEnc_shareRoot () =
     F.printf "Pred Enc Roots ABE test succedded!\t Time: \027[32m%F\027[0m seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Predicate Encodings Roots test failed"
+
+let test_predEnc_ZIP () =
+
+  let n = 200 in
+  
+  let module PE = (val make_InnerProduct_PredEnc n) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+  
+  let i = Zp.from_int in
+  
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  let x = ABE.set_x (InnerProduct(n, (i 1) :: (Util.mk_list (i 0) (n-1)) )) in
+
+  let t3 = Unix.gettimeofday() in
+  F.printf "%F\n" (Pervasives.ceil ((100.0 *. (t3 -. t1))) /. 100.0);
+  let msg = ABE.rand_msg () in
+  let ct_x = ABE.enc mpk x msg in
+  
+  let y = ABE.set_y (InnerProduct(n, (i 0) :: (Util.mk_list (i 1) (n-1)) )) in
+
+  let sk_y = ABE.keyGen mpk msk y in
+  let msg' = ABE.dec mpk sk_y ct_x in
+
+  let y' = ABE.set_y (InnerProduct(n, (i 1) :: (Util.mk_list (i 0) (n-1)) )) in
+
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
+
+  let t2 = Unix.gettimeofday() in
+
+  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
+    F.printf "Pred Enc ZIP ABE test succedded!\t Time: \027[32m%F\027[0m seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
+  else failwith "Predicate Encodings ZIP test failed"
+                
                 
 let test_pairEnc () =
   

@@ -562,3 +562,63 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
   end
   in
   (module Characterization : PredEnc_Characterization)
+
+
+let make_InnerProduct_PredEnc (n : int) =
+  
+  let module ZIP_PredEnc (B : BilinearGroup) = struct
+      
+    (* Predicate Encoding for Ciphertet-Policy ABE for Non-Zero Inner Product *)
+            
+    type x = Zp.t list
+    type y = Zp.t list
+
+    let n = n+2
+      
+    let sE x u0_u1_w = 
+      let u1 = L.hd_exn (L.tl_exn u0_u1_w) in
+      let w  = L.tl_exn (L.tl_exn u0_u1_w) in
+      [B.G1.add u1 (vector_times_vector ~add:B.G1.add ~mul:B.G1.mul w x)]
+
+    let rE y u0_u1_w =
+      let u0 = L.hd_exn u0_u1_w in
+      let u1 = L.hd_exn (L.tl_exn u0_u1_w) in
+      let w  = L.tl_exn (L.tl_exn u0_u1_w) in
+      (L.map2_exn (L.map y ~f:(B.G2.mul u0)) w ~f:B.G2.add) @ [u1]
+        
+    let kE y alpha =
+      (mk_list B.G2.zero (L.length y)) @ [alpha]
+                 
+    let sD _x _y c = L.hd_exn c
+             
+    let rD x _y d_d' =
+      let d' = L.hd_exn (L.rev d_d') in
+      let d  = L.tl_exn (L.rev d_d') |> L.rev in
+      B.G2.add (vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d x) d'
+             
+    let set_x = function
+      | InnerProduct (_,x) -> x
+      | _ -> failwith "wrong input"
+                      
+    let set_y = function
+      | InnerProduct (_,y) -> y
+      | _ -> failwith "wrong input"
+                      
+  (* *** String converions *)
+
+    let sep = "#"
+
+    let string_of_x x =
+      list_to_string ~sep:sep (L.map x ~f:Zp.write_str)
+
+    let string_of_y y =
+      list_to_string ~sep:sep (L.map y ~f:Zp.write_str)
+
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep) str) ~f:Zp.read_str
+
+    let y_of_string str =
+      L.map (S.split ~on:(Char.of_string sep) str) ~f:Zp.read_str
+  end
+  in
+  (module ZIP_PredEnc : PredEnc)
