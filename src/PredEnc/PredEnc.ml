@@ -139,7 +139,7 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
   let predicate x y = not (C.predicate x y)
   
   let s = C.w
-  let r = C.w + 1 + C.w 
+  let r = C.w + 1
   let w = C.r + C.w + C.s
 
   let sE_matrix x =
@@ -157,20 +157,18 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
     let k = C.kE_vector y in
     let m22 = matrix_times_matrix ~add:Zp.add ~mul:Zp.mul [k] (transpose_matrix mAr') in
     join_blocks [
-      [ create_matrix Zp.zero ~m:C.w ~n:C.r; m12; create_matrix Zp.zero ~m:C.w ~n:C.s ];
+      [ transpose_matrix mAr; m12; create_matrix Zp.zero ~m:C.w ~n:C.s ];
       [ [L.map k ~f:Zp.neg]; m22; create_matrix Zp.zero ~m:1 ~n:C.s];
-      [ transpose_matrix mAr; create_matrix Zp.zero ~m:C.w ~n:C.w; create_matrix Zp.zero ~m:C.w ~n:C.s]
     ]
   let kE_vector _y = 
-    let zeros = mk_list Zp.zero C.w in
-    zeros @ [Zp.one] @ zeros
+    (mk_list Zp.zero C.w) @ [Zp.one]
 
   let sD_vector x y =
     C.get_witness x y
        
   let rD_vector x y =
     let w' = C.get_witness x y in
-    w' @ [Zp.one] @ w'
+    w' @ [Zp.one]
 
   let get_witness x y =
     let mAs = C.sE_matrix x in
