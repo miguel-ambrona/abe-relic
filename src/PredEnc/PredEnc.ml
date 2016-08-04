@@ -568,7 +568,7 @@ let make_InnerProduct_PredEnc (n : int) =
   
   let module ZIP_PredEnc (B : BilinearGroup) = struct
       
-    (* Predicate Encoding for Ciphertet-Policy ABE for Non-Zero Inner Product *)
+    (* Predicate Encoding for Ciphertet-Policy ABE for Zero Inner Product *)
             
     type x = Zp.t list
     type y = Zp.t list
@@ -589,7 +589,8 @@ let make_InnerProduct_PredEnc (n : int) =
     let kE y alpha =
       (mk_list B.G2.zero (L.length y)) @ [alpha]
                  
-    let sD _x _y c = L.hd_exn c
+    let sD _x _y c =
+      L.hd_exn c
              
     let rD x _y d_d' =
       let d' = L.hd_exn (L.rev d_d') in
@@ -622,3 +623,73 @@ let make_InnerProduct_PredEnc (n : int) =
   end
   in
   (module ZIP_PredEnc : PredEnc)
+
+
+let make_BroadcastEnc_PredEnc (t1 : int) (t2 : int) =
+  
+  let module Broadcast_PredEnc (B : BilinearGroup) = struct
+      
+    (* Predicate Encoding for Ciphertet-Policy ABE for Broadcast Encryption *)
+            
+    type x = bool list
+    type y = int * int
+               
+    let n = t1 + t2
+
+    let bool_dot_prod ~add ~zero x v =
+      L.fold_left (L.zip_exn x v)
+       ~init:zero
+       ~f:(fun result (xi,vi) -> if xi then add result vi else result)
+       
+    let sE x w_u =
+      let w = L.slice w_u 0 t1 in
+      let u = L.slice w_u t1 (t1+t2) in
+      let xu = L.map (list_range 0 t1)
+                ~f:(fun i -> bool_dot_prod ~add:B.G1.add ~zero:B.G1.zero (L.slice x (i*t2) ((i+1)*t2)) u)
+      in
+      L.map2_exn xu w ~f:B.G1.add
+
+    let rE (i1,i2) w_u =
+      let w = L.slice w_u 0 t1 in
+      let u = L.slice w_u t1 (t1+t2) in
+      L.map (list_range 0 t2) ~f:(fun i -> if i = i2 then B.G2.add (L.nth_exn u i) (L.nth_exn w i1)
+                                           else L.nth_exn u i
+                                 )     
+        
+    let kE (_,i2) alpha =
+      L.map (list_range 0 t2) ~f:(fun i -> if i = i2 then alpha else B.G2.zero)
+                 
+    let sD _x (i1,_) c =
+      L.nth_exn c i1
+             
+    let rD x (i1,_) d =
+      bool_dot_prod ~add:B.G2.add ~zero:B.G2.zero (L.slice x (i1*t2) ((i1+1)*t2)) d
+             
+    let set_x = function
+      | BroadcastEncVector (_,_,x) -> x
+      | _ -> failwith "wrong input"
+                      
+    let set_y = function
+      | BroadcastEncIndex (_,_,(i1,i2)) -> (i1,i2)
+      | _ -> failwith "wrong input"
+                      
+  (* *** String converions *)
+
+    let sep = "#"
+
+    let string_of_x x =
+      list_to_string ~sep:sep (L.map x ~f:(fun b -> if b then "1" else "0"))
+
+    let string_of_y (i1,i2) =
+      (string_of_int i1) ^ sep ^ (string_of_int i2)
+
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep) str) ~f:(fun s -> if s = "1" then true else false)
+
+    let y_of_string str =
+      match S.split ~on:(Char.of_string sep) str with
+      | s1 :: s2 :: [] -> (int_of_string s1), (int_of_string s2)
+      | _ -> failwith "wrong input"
+  end
+  in
+  (module Broadcast_PredEnc : PredEnc)

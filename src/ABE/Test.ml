@@ -380,8 +380,6 @@ let test_predEnc_ZIP () =
   let mpk, msk = ABE.setup () in
   let x = ABE.set_x (InnerProduct(n, (i 1) :: (Util.mk_list (i 0) (n-1)) )) in
 
-  let t3 = Unix.gettimeofday() in
-  F.printf "%F\n" (Pervasives.ceil ((100.0 *. (t3 -. t1))) /. 100.0);
   let msg = ABE.rand_msg () in
   let ct_x = ABE.enc mpk x msg in
   
@@ -401,8 +399,43 @@ let test_predEnc_ZIP () =
     F.printf "Pred Enc ZIP ABE test succedded!\t Time: \027[32m%F\027[0m seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Predicate Encodings ZIP test failed"
-                
-                
+
+
+let test_predEnc_Broadcast () =
+
+  let t = 10 in
+  let t' = 10 in
+  
+  let module PE = (val make_BroadcastEnc_PredEnc t t') in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+    
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  let x = ABE.set_x (BroadcastEncVector(t,t', true :: (Util.mk_list false (t*t'-1)) )) in
+
+  let msg = ABE.rand_msg () in
+  let ct_x = ABE.enc mpk x msg in
+
+  let id = 0 in
+  let y = ABE.set_y (BroadcastEncIndex(t,t', (id/t,id mod t))) in
+
+  let sk_y = ABE.keyGen mpk msk y in
+  let msg' = ABE.dec mpk sk_y ct_x in
+
+  let id' = t*t'-1 in
+  let y' = ABE.set_y (BroadcastEncIndex(t,t', (id'/t,id' mod t))) in
+
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
+
+  let t2 = Unix.gettimeofday() in
+
+  if (B.Gt.equal msg msg') && not (B.Gt.equal msg msg'') then
+    F.printf "Pred Enc. Broadcast test succedded!\t Time: \027[32m%F\027[0m seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
+  else failwith "Predicate Encodings ZIP test failed"
+
+
 let test_pairEnc () =
   
   let module Par = struct
