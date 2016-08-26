@@ -132,7 +132,7 @@ module Disjunction_Characterization (C1 : PredEnc_Characterization) (C2 : PredEn
 
 end
 
-module Negation_Characterization (C : PredEnc_Characterization) = struct
+module Slow_Negation_Characterization (C : PredEnc_Characterization) = struct
 
   type x = C.x
   type y = C.y
@@ -183,6 +183,56 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
     let mAst_bs = matrix_times_vector ~add:Zp.add ~mul:Zp.mul (transpose_matrix mAs) bs in
     let aux = matrix_times_vector ~add:Zp.add ~mul:Zp.mul (transpose_matrix mAr') mAst_bs in
     (L.map2_exn aux br ~f:(fun a b -> Zp.add a (Zp.neg b))) @ mAst_bs @ bs
+
+  let set_x = C.set_x
+  let set_y = C.set_y
+
+  let string_of_x = C.string_of_x
+  let string_of_y = C.string_of_y
+  let x_of_string = C.x_of_string
+  let y_of_string = C.y_of_string
+end
+
+module Negation_Characterization (C : PredEnc_Characterization) = struct
+
+  type x = C.x
+  type y = C.y
+
+  module GaussElim = LinAlg(Zp)
+
+  let predicate x y = not (C.predicate x y)
+  
+  let s = C.w
+  let r = C.w + 1
+  let w = C.r + C.w + C.s
+
+  let sE_matrix x =
+    join_blocks [[ create_matrix Zp.zero ~m:s ~n:C.r;
+                   identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:s;
+                   L.map (transpose_matrix (C.sE_matrix x)) ~f:(L.map ~f:Zp.neg) ]]
+  let rE_matrix y =
+    let mAr = C.rE_matrix y in
+    let id_r = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:C.w in
+    let k = C.kE_vector y in
+    join_blocks [
+      [ transpose_matrix mAr; id_r; create_matrix Zp.zero ~m:C.w ~n:C.s ];
+      [ [L.map k ~f:Zp.neg]; create_matrix Zp.zero ~m:1 ~n:C.w; create_matrix Zp.zero ~m:1 ~n:C.s];
+    ]
+  let kE_vector _y = 
+    (mk_list Zp.zero C.w) @ [Zp.one]
+
+  let sD_vector x y =
+    C.get_witness x y
+       
+  let rD_vector x y =
+    let w' = C.get_witness x y in
+    w' @ [Zp.one]
+
+  let get_witness x y =
+    let mAs = C.sE_matrix x in
+    let bs = C.sD_vector x y in
+    let br = C.rD_vector x y in
+    bs @ (matrix_times_vector ~add:Zp.add ~mul:Zp.mul (transpose_matrix mAs) bs) @ (L.map br ~f:Zp.neg)
 
   let set_x = C.set_x
   let set_y = C.set_y

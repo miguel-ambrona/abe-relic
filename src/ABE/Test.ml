@@ -292,9 +292,8 @@ let test_predEnc_Revocation () =
   let module C1 = (val make_BF_PredEnc_Characterization s r w) in
   let module C2 = (val make_BF_PredEnc_Characterization s' r' w') in
   let module C1_dual = Dual_Characterization (C1) in
-  let module C1_neg = Negation_Characterization (C1_dual) in
-  let module C_neg = Disjunction_Characterization (C2) (C1_neg) in
-  let module C = Negation_Characterization (C_neg) in
+  let module C2_neg = Negation_Characterization (C2) in
+  let module C = Conjunction_Characterization (C2_neg) (C1_dual) in
   let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
@@ -369,7 +368,7 @@ let test_predEnc_shareRoot () =
 
 let test_predEnc_ZIP () =
 
-  let n = 200 in
+  let n = 50 in
   
   let module PE = (val make_InnerProduct_PredEnc n) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
