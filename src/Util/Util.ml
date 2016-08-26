@@ -1,5 +1,30 @@
 open Abbrevs
 
+let zp_samp_ref = ref 0
+let g1_add_ref  = ref 0
+let g2_add_ref  = ref 0
+let gt_mul_ref  = ref 0
+let g1_mul_ref  = ref 0
+let g2_mul_ref  = ref 0
+let gt_exp_ref  = ref 0
+let e_map_ref   = ref 0
+
+let empty_references () =
+  zp_samp_ref := 0;
+  g1_add_ref  := 0;
+  g2_add_ref  := 0;
+  gt_mul_ref  := 0;
+  g1_mul_ref  := 0;
+  g2_mul_ref  := 0;
+  gt_exp_ref  := 0;
+  e_map_ref   := 0;
+  ()
+
+let print_references () =
+  F.printf "Zp_samp: %d,\tG1_add: %d,\tG2_add: %d,\tGt_mul: %d\t" !zp_samp_ref !g1_add_ref !g2_add_ref !gt_mul_ref;
+  F.printf "G1_mul: %d,\tG2_mul: %d,\tGt_exp: %d,\te_map: %d\n\n" !g1_mul_ref !g2_mul_ref !gt_exp_ref !e_map_ref;
+  F.print_flush ()
+       
 let rec equal_lists ~equal list1 list2 =
   match list1, list2 with
   | [], [] -> true

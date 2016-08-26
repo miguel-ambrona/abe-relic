@@ -33,7 +33,7 @@ module Zp = struct
   let zero = R.bn_zero ()
   let is_zero a = R.bn_is_zero (R.bn_mod a p)
     
-  let samp () = R.bn_rand_mod p
+  let samp () = zp_samp_ref := !zp_samp_ref + 1; R.bn_rand_mod p
   let write_str t = R.bn_write_str (R.bn_mod t p) ~radix:10
   let read_str str = R.bn_mod (R.bn_read_str str ~radix:10) p
 
@@ -56,12 +56,21 @@ let make_BilinearGroup (k : int) =
     type atom = R.g1
       
     type t = atom list
-    let add = L.map2_exn ~f:R.g1_add
-    let neg = L.map ~f:R.g1_neg
-    let mul t a = L.map t ~f:(fun g -> R.g1_mul g a)
+                  
+    let atom_add a a' =
+      if R.g1_is_infty a then a'
+      else if R.g1_is_infty a' then a
+      else (g1_add_ref := !g1_add_ref + 1; R.g1_add a a')
+    let add t t' = L.map2_exn ~f:atom_add t t'
+    let neg t = L.map ~f:R.g1_neg t
     let one = mk_list (R.g1_gen ()) (k+1)
     let zero = mk_list (R.g1_infty ()) (k+1)
-    let samp = (fun () -> sample_list ~f:R.g1_rand (k+1))
+    let mul t a =
+      if Zp.is_zero a then zero
+      else (g1_mul_ref := !g1_mul_ref + k; L.map t ~f:(fun g -> R.g1_mul g a))
+    let samp () =
+      zp_samp_ref := !zp_samp_ref + k + 1;
+      sample_list ~f:R.g1_rand (k+1)
 
     let atom_gen = R.g1_gen ()
     let atom_from_dlog = R.g1_mul atom_gen
@@ -80,12 +89,21 @@ let make_BilinearGroup (k : int) =
     type atom = R.g2
 
     type t = atom list
-    let add = L.map2_exn ~f:R.g2_add
-    let neg = L.map ~f:R.g2_neg
-    let mul t a = L.map t ~f:(fun g -> R.g2_mul g a)
+                  
+    let atom_add a a' =
+      if R.g2_is_infty a then a'
+      else if R.g2_is_infty a' then a
+      else (g2_add_ref := !g2_add_ref + 1; R.g2_add a a')
+    let add t t' = L.map2_exn ~f:atom_add t t'
+    let neg t = L.map ~f:R.g2_neg t
     let one = mk_list (R.g2_gen ()) (k+1)
     let zero = mk_list (R.g2_infty ()) (k+1)
-    let samp = (fun () -> sample_list ~f:R.g2_rand (k+1))
+    let mul t a =
+      if Zp.is_zero a then zero
+      else (g2_mul_ref := !g2_mul_ref + k; L.map t ~f:(fun g -> R.g2_mul g a))
+    let samp () =
+      zp_samp_ref := !zp_samp_ref + k + 1;
+      sample_list ~f:R.g2_rand (k+1)
 
     let atom_gen = R.g2_gen ()
     let atom_from_dlog = R.g2_mul atom_gen
@@ -102,17 +120,17 @@ let make_BilinearGroup (k : int) =
 
   let module Gt = struct
     type t = R.gt
-    let add = R.gt_mul
-    let neg = R.gt_inv
-    let mul = R.gt_exp
+    let add t t' = gt_mul_ref := !gt_mul_ref + 1; R.gt_mul t t'
+    let neg t = R.gt_inv t
+    let mul t t' = gt_exp_ref := !gt_exp_ref + 1; R.gt_exp t t'
     let one = R.gt_unity ()
     let zero = R.gt_zero ()
-    let samp = R.gt_rand
+    let samp () = zp_samp_ref := !zp_samp_ref + 1; R.gt_rand ()
 
     let equal = R.gt_equal
 
     type atom = t
-
+                  
     let atom_gen = R.gt_gen ()
     let atom_from_dlog = R.gt_exp atom_gen
     let to_list h = [h]
@@ -130,6 +148,7 @@ let make_BilinearGroup (k : int) =
     module G2 = G2
     module Gt = Gt
     let e g1 g2 =
+      e_map_ref := !e_map_ref + 1;
       let gt_list = L.map2_exn (G1.to_list g1) (G2.to_list g2) ~f:R.e_pairing in
       L.fold_left (L.tl_exn gt_list) ~init:(L.hd_exn gt_list) ~f:Gt.add
   end : BilinearGroup)

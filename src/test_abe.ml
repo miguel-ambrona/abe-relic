@@ -1,6 +1,6 @@
 open Core_kernel.Std
 open Abbrevs
-
+       
 let main =
   if Array.length Sys.argv = 1 then
     (Test.test_predEnc (); F.print_flush ();
@@ -15,10 +15,11 @@ let main =
      Test.test_pairEnc ();
     )
   else
-    for n = 10 to 10000 do
+    (*for n = 10 to 10000 do
       (if n % 5 = 0 then
-        BoolFormsTest.bigPredEnc_test n
+         BoolFormsTest.bigPredEnc_test n
        else ()
       );
     done
-    (*    BoolFormsTest.test Sys.argv.(1) *)
+     *)
+    BoolFormsTest.test Sys.argv.(1)

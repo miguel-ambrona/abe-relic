@@ -25,6 +25,7 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
     let par_T  = n_attributes
   end
   in
+  F.printf "%d %d %d\n" Par.par_n1 Par.par_n2 Par.par_T;
   let module PE = (val make_BF_PredEnc (n_attributes * rep + and_gates + 1)) in
   let module ABE1 = PredEncABE (B) (DSG) (PE) in
   let module ABE2 = PairEncABE (B) (DSG) (Boolean_Formula_PairEnc (Par)) in
@@ -38,7 +39,8 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
     (string_of_boolean_formula policy) (pp_list ", " pp_attribute) key_attributes sat;
   
   (* ** Predicate-Encodings *)
-  
+
+  empty_references ();
   let t1 = Unix.gettimeofday() in
   let mpk, msk = ABE1.setup () in
   
@@ -59,7 +61,8 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
   (if sat then assert (B.Gt.equal msg msg') else assert (not (B.Gt.equal msg msg')));
   
   F.printf "(PredEnc) Setup: %F s. KeyGen: %F s. Encryption: %F s. Decryption: %F s.\n"
-    (round (t2 -. t1) 3.0) (round (t4 -. t3) 3.0) (round (t3 -. t2) 3.0) (round (t5 -. t4) 3.0);
+           (round (t2 -. t1) 3.0) (round (t4 -. t3) 3.0) (round (t3 -. t2) 3.0) (round (t5 -. t4) 3.0);
+  print_references();
 
   fprintf out_file "(PredEnc) Setup: %F s. KeyGen: %F s. Encryption: %F s. Decryption: %F s.\n"
     (round (t2 -. t1) 3.0) (round (t4 -. t3) 3.0) (round (t3 -. t2) 3.0) (round (t5 -. t4) 3.0);
@@ -72,7 +75,8 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
   F.print_flush ();
   
   (* ** Pair-Encodings *)
-  
+
+  empty_references ();
   let t1 = Unix.gettimeofday() in
   let mpk, msk = ABE2.setup () in
   
@@ -92,10 +96,12 @@ let run_test ~out_file ~setup_file ~keygen_file ~enc_file ~dec_file ~n_attribute
   
   (if sat then assert (B.Gt.equal msg msg') else assert (not (B.Gt.equal msg msg')));
   
-  F.printf "(PairEnc) Setup: %F s. KeyGen: %F s. Encryption: %F s. Decryption: %F s.\n\n"
-    (round (t2 -. t1) 3.0) (round (t4 -. t3) 3.0) (round (t3 -. t2) 3.0) (round (t5 -. t4) 3.0);
+  F.printf "(PairEnc) Setup: %F s. KeyGen: %F s. Encryption: %F s. Decryption: %F s.\n"
+           (round (t2 -. t1) 3.0) (round (t4 -. t3) 3.0) (round (t3 -. t2) 3.0) (round (t5 -. t4) 3.0);
+  print_references ();
+  F.printf "\n";
 
-  fprintf out_file "(PairEnc) Setup: %F s. KeyGen: %F s. Encryption: %F s. Decryption: %F s.\n\n"
+  fprintf out_file "(PairEnc) Setup: %F s. KeyGen: %F s. Encryption: %F s. Decryption: %F s.\n"
     (round (t2 -. t1) 3.0) (round (t4 -. t3) 3.0) (round (t3 -. t2) 3.0) (round (t5 -. t4) 3.0);
 
   fprintf  setup_file ", %F\n" (round (t2 -. t1) 3.0);
@@ -213,11 +219,11 @@ let test algorithm =
   let dec_file    = open_out "tests/dec_times.txt" in
 
   let i1 = 2 in
-  let i2 = 16 in
+  let i2 = 11 in
   let j1 = 3 in
   let j2 = 6 in
   let k1 = 2 in
-  let k2 = 16 in
+  let k2 = 11 in
 
   let n_tests = (i2-i1+1) * (j2-j1+1) * (k2-k1+1) in
   let counter = ref 1 in
