@@ -28,7 +28,7 @@ module Hoeteck's_DSG (B : BilinearGroup) = struct
     in
     (make_matrix [] 0 diagonal) @ [ mk_list (R.bn_one ()) n],
     (L.map diagonal ~f:Zp.inv) @ [Zp.neg (Zp.one)]
-      
+
   let sampP n =
     let a_matrix, a_orth = samp_Dk k in
     let b_matrix, b_orth = samp_Dk k in
@@ -84,9 +84,9 @@ module Hoeteck's_DSG (B : BilinearGroup) = struct
     let prod_WBr = L.map g2_WB ~f:(fun wb -> vector_times_vector ~add:B.G2.add ~mul:B.G2.mul wb r_list) in
     prod_Br :: prod_WBr
 
-      
+
   (* *** String conversions *)
-    
+
   let sep0 = "@"
   let sep1 = "#"
   let sep2 = ";"
@@ -97,7 +97,7 @@ module Hoeteck's_DSG (B : BilinearGroup) = struct
     let g1_WA_str = L.map g1_WA ~f:(L.map ~f:(fun g -> B.G1.to_string g)) in
     let g2_B_str  = L.map g2_B            ~f:(fun g -> B.G2.to_string g)  in
     let g2_WB_str = L.map g2_WB ~f:(L.map ~f:(fun g -> B.G2.to_string g)) in
-    
+
     (list_to_string ~sep:sep2 g1_A_str) ^ sep0 ^ (list_list_to_string ~sep1 ~sep2 g1_WA_str) ^ sep0 ^
       (list_to_string ~sep:sep2 g2_B_str) ^ sep0 ^ (list_list_to_string ~sep1 ~sep2 g2_WB_str)
 

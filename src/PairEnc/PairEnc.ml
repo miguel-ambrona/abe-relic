@@ -84,7 +84,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
     )
 
   (* Pair Encoding for Ciphertext-Policy ABE for boolean formulas *)
-                           
+
   let param =
     Par.par_n1 * (Par.par_n2 + Par.par_T + 1)
 
@@ -116,7 +116,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
     let k1 = L.map (list_range 1 (Par.par_n1+1)) ~f:(fun i -> mk_r i) in
     let k2 =
       L.map (list_range 1 (Par.par_n1+1))
-        ~f:(fun i -> 
+        ~f:(fun i ->
           L.map (list_range 1 (Par.par_n2+1))
             ~f:(fun j -> P.(((mk_r i) *@ (mk_b i j)) -@ (mk_v j)))
         )
@@ -179,7 +179,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
     let forbidden = ri_bj_s_bk @ ri_bj_sk_bl in
 
     let requirement p = list_empty_intersection ~equal:P.mon_equal (P.mons p) forbidden in
-    
+
     try Some (Alg.find_matrix ~requirement k c target) with
     | Not_found -> None
 
@@ -206,7 +206,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
          let col1_k1 = mk_list Zp.zero (Par.par_n1) in
          let col1_k2 =
            L.map (list_range 1 (Par.par_n1+1))
-             ~f:(fun i -> 
+             ~f:(fun i ->
                L.map (list_range 1 (Par.par_n2+1))
                  ~f:(fun j -> Zp.(mul (L.nth_exn epsilon (i-1)) ((L.nth_exn (L.nth_exn mA (i-1)) (j-1)))))
              )
@@ -266,7 +266,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
       | None -> ()
     in
 *)
-    ad_hocPair (mA,pi) setS  
+    ad_hocPair (mA,pi) setS
 
   let set_x = function
     | BoolForm_Policy (n1, n2, _, policy) ->
@@ -283,7 +283,7 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
 
   let sep1 = "#"
   let sep2 = ";"
-    
+
   let string_of_x x =
     let matrix, pi = x in
     (list_to_string ~sep:sep2 (L.map (Util.list_range 1 (Par.par_n1+1)) ~f:(fun i -> Zp.write_str (pi i))))
@@ -301,5 +301,5 @@ module Boolean_Formula_PairEnc (Par : PairEnc_Par) = struct
 
   let y_of_string str =
     L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
-      
+
 end

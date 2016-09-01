@@ -8,14 +8,14 @@ open LinAlg
 *)
 
 let sample_list ~f k =
-  let rec aux list k = 
+  let rec aux list k =
     if k = 0 then list
     else aux (list @ [f ()]) (k-1)
   in
   aux [] k
 
 let sample_matrix ~f m n =
-  let rec aux matrix m = 
+  let rec aux matrix m =
     if m = 0 then matrix
     else aux (matrix @ [sample_list ~f n]) (m-1)
   in
@@ -37,7 +37,7 @@ let matrix_times_vector ~add ~mul m v = L.map m ~f:(fun row -> vector_times_vect
 let matrix_times_matrix ~add ~mul m1 m2 =
   L.map (transpose_matrix m2) ~f:(fun col -> matrix_times_vector ~add ~mul m1 col)
   |> transpose_matrix
-    
+
 let matrix_map ~f m = L.map m ~f:(L.map ~f)
 
 let create_matrix element ~m ~n =
@@ -127,7 +127,7 @@ module MyGaussElim (Field : Field) = struct
       else aux (Field.mul prod (L.nth_exn (L.nth_exn matrix k) k)) (k+1)
     in
     aux Field.one 0
-                            
+
   let gaussian_elimination matrix =
     let n = L.length (L.hd_exn matrix) in
     let rec go reduced k det =
@@ -146,7 +146,7 @@ module MyGaussElim (Field : Field) = struct
   let determinant matrix =
     let _, det = gaussian_elimination matrix in
     det
-       
+
   let kernel matrix =
     let m = L.length matrix in
     let n = L.length (L.hd_exn matrix) in
@@ -176,6 +176,6 @@ module MyGaussElim (Field : Field) = struct
         let mD'D_inv = pseudo_inverse (matrix_times_matrix ~add ~mul mD' mD) in
         add_matrices ~add:(fun a b -> add a (Field.neg b))
           mM
-          (matrix_times_matrix ~add ~mul mM 
+          (matrix_times_matrix ~add ~mul mM
              (matrix_times_matrix ~add ~mul mD (matrix_times_matrix ~add ~mul mD'D_inv mD')))
 end

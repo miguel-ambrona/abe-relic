@@ -6,7 +6,7 @@
 open AlgStructures
 open MakeAlgebra
 open Predicates
-       
+
 module type PredEnc =
   functor (B : BilinearGroup) ->
     sig
@@ -33,7 +33,7 @@ module type PredEnc_Characterization = sig
   type x
   type y
   val predicate : x -> y -> bool
-    
+
   val s : int
   val r : int
   val w : int
@@ -45,10 +45,10 @@ module type PredEnc_Characterization = sig
   val rD_vector : x -> y -> Zp.t list
 
   val get_witness : x -> y -> Zp.t list
-    
+
   val set_x : generic_attribute -> x
   val set_y : generic_attribute -> y
-    
+
   val string_of_x : x -> string
   val string_of_y : y -> string
   val x_of_string : string -> x

@@ -4,7 +4,7 @@ open PolyInterfaces
 open LinAlg
 
 module PolyAlg (P : Poly) = struct
-    
+
   type t = P.t
 
   module Gauss = LinAlg (P.Coeffs)
@@ -19,7 +19,7 @@ module PolyAlg (P : Poly) = struct
     let matrix = L.map all_monomials ~f:(fun m -> L.map polys ~f:(fun p -> P.coeff_in_field p m)) in
     let vector = L.map all_monomials ~f:(fun m -> P.coeff_in_field target m) in
     Gauss.solve matrix vector
-      
+
 
    (* This functions takes as input two lists of polynomials k and c and a target polynomial
       and outputs a matrix E of coefficients satisfying the equation

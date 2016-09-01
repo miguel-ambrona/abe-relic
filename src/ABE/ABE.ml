@@ -46,7 +46,7 @@ end
 (* ** ABE described in 'Improved Dual System ABE in Prime-Order Groups via Predicate Encodings' *)
 
 module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = struct
-    
+
   module DSG = DSG (B)
   module PE = PE (B)
 
@@ -62,7 +62,7 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
     let mu, (pp, _sp) = DSG.sampP PE.n in (* _sp is only used in the proof of security *)
     let msk = B.G2.samp () in
     (pp, mu msk), msk
-      
+
   let enc mpk x m =
     let (pp, mu_msk) = mpk in
     let k = (L.length (B.G1.to_list B.G1.one)) - 1 in
@@ -73,25 +73,25 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
     let c1 = PE.sE x (L.tl_exn g_list) in
     let c' = B.Gt.add g'T m in
     (c0, c1, c'), x
-  
+
   let keyGen mpk msk y =
     let (pp, _mu_msk) = mpk in
     let h_list = DSG.sampH pp in
     let k0 = L.hd_exn h_list in
     let k1 = L.map2_exn (PE.kE y msk) (PE.rE y (L.tl_exn h_list)) ~f:B.G2.add in
     (k0, k1), y
-  
+
   let dec _mpk sk_y ct_x =
     let (c0, c1, c'), x = ct_x in
     let (k0, k1), y = sk_y in
     let e_g0_msk = B.Gt.add (B.e c0 (PE.rD x y k1)) (B.Gt.neg (B.e (PE.sD x y c1) k0)) in
-    B.Gt.add c' (B.Gt.neg e_g0_msk)        
+    B.Gt.add c' (B.Gt.neg e_g0_msk)
 
   let rand_msg = B.Gt.samp
 
   let set_x = PE.set_x
   let set_y = PE.set_y
-      
+
   (* *** String conversions *)
 
   let sep = "&"
@@ -105,7 +105,7 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
 
   let string_of_sk sk =
     let (k0, k1), y = sk in
-    (B.G2.to_string k0) ^ sep ^ (list_to_string ~sep:sep1 (L.map k1 ~f:B.G2.to_string)) ^ sep ^ (PE.string_of_y y) 
+    (B.G2.to_string k0) ^ sep ^ (list_to_string ~sep:sep1 (L.map k1 ~f:B.G2.to_string)) ^ sep ^ (PE.string_of_y y)
 
   let string_of_ct ct =
     let (c0, c1, c'), x = ct in
@@ -129,7 +129,7 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
        (B.G2.of_string str_k0, L.map (S.split ~on:(Char.of_string sep1) str_k1) ~f:B.G2.of_string),
       PE.y_of_string str_y
     | _ -> failwith "invalid string"
-      
+
   let ct_of_string str =
     match S.split ~on:(Char.of_string sep) str with
     | str_c0 :: str_c1 :: str_c' :: str_x :: [] ->
@@ -141,7 +141,7 @@ module PredEncABE (B : BilinearGroup) (DSG: DualSystemGroup) (PE : PredEnc) = st
 end
 
 (* ** ABE described in 'A Study of Pair Encodings: Predicate Encryption in Prime Order Groups' *)
-  
+
 module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = struct
 
   module DSG = DSG (B)
@@ -173,7 +173,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
         ~f:(fun c ->
           let zeta = P.coeff c PE.monom_s in
           let ct = B.G1.mul (L.nth_exn g0 0) zeta in
-          let ct = 
+          let ct =
             L.fold_left (list_range 1 (w2+1))
               ~init:ct
               ~f:(fun ct i ->
@@ -181,7 +181,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
                 B.G1.add ct (B.G1.mul (L.nth_exn (L.nth_exn g_list (i-1)) 0) eta)
               )
           in
-          let ct = 
+          let ct =
             L.fold_left (list_range 1 (PE.param+1))
               ~init:ct
               ~f:(fun ct j ->
@@ -213,11 +213,11 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
     let ct' = B.Gt.add m (DSG.sampGT ~randomness:(Some alpha) mu_msk) in
 
     (ct_list, ct'), x
-  
+
   let keyGen mpk msk y =
     let (pp, _mu_msk) = mpk in
     let k_polys, m2 = PE.encK y in
-    let h_list = sample_list ~f:(fun () -> DSG.sampH pp) m2 in 
+    let h_list = sample_list ~f:(fun () -> DSG.sampH pp) m2 in
     let sk_list =
       L.map k_polys
         ~f:(fun k ->
@@ -226,7 +226,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
           let sk =
             L.fold_left (list_range 1 (m2+1))
               ~init:sk
-              ~f:(fun sk i -> 
+              ~f:(fun sk i ->
                 let upsilon = P.coeff k (L.nth_exn PE.monom_ri (i-1)) in
                 B.G2.add sk (B.G2.mul (L.nth_exn (L.nth_exn h_list (i-1)) 0) upsilon)
               )
@@ -234,7 +234,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
           let sk =
             L.fold_left (list_range 1 (m2+1))
               ~init:sk
-              ~f:(fun sk i -> 
+              ~f:(fun sk i ->
                 L.fold_left (list_range 1 (PE.param+1))
                   ~init:sk
                   ~f:(fun sk j ->
@@ -250,7 +250,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
         )
     in
     sk_list, y
-  
+
   let dec _mpk sk_y ct_x =
     let (ct_list, ct'), x = ct_x in
     let sk_list, y = sk_y in
@@ -270,7 +270,7 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
                  let mE_tl = (L.nth_exn (L.nth_exn mE (t-1)) (l-1)) |> P.coeff_to_field in
                  let sk_exp = B.G2.mul (L.nth_exn sk_list (t-1)) mE_tl in
                  B.Gt.add bf (B.e (L.nth_exn ct_list (l-1)) sk_exp)
-               )          
+               )
            )
        in
        B.Gt.add ct' (B.Gt.neg blinding_factor)
@@ -282,19 +282,19 @@ module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = s
   let set_y = PE.set_y
 
   (* *** String conversions *)
-         
+
   let sep = "&"
   let sep1 = "?"
 
   let string_of_mpk mpk =
     let (pp, img_mu) = mpk in
     (DSG.string_of_pp pp) ^ sep ^ (DSG.string_of_img_mu img_mu)
-      
+
   let string_of_msk msk = B.G2.to_string msk
 
   let string_of_sk sk =
     let (k, y) = sk in
-    (list_to_string ~sep:sep1 (L.map k ~f:B.G2.to_string)) ^ sep ^ (PE.string_of_y y) 
+    (list_to_string ~sep:sep1 (L.map k ~f:B.G2.to_string)) ^ sep ^ (PE.string_of_y y)
 
   let string_of_ct ct =
     let (c, c'), x = ct in

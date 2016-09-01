@@ -12,7 +12,7 @@ let abe_from_pp pp =
   let module B = (val make_BilinearGroup 2) in
   let module DSG = Hoeteck's_DSG in
   match pp.pp_scheme, pp.pp_encoding, pp.pp_predicate with
-  | Some CP_ABE, Some PredicateEncoding, Some BoolForm(_,_,_) -> 
+  | Some CP_ABE, Some PredicateEncoding, Some BoolForm(_,_,_) ->
      let module PE = (val make_BF_PredEnc 3) in
      (module PredEncABE (B) (DSG) (PE) : ABE)
   | Some CP_ABE, Some PairEncoding, Some BoolForm(n1,n2,t) ->
@@ -29,7 +29,7 @@ let abe_from_pp pp =
 
 let get_setup_size pp =
   match pp.pp_scheme, pp.pp_encoding, pp.pp_predicate with
-  | Some CP_ABE, Some PredicateEncoding, Some BoolForm(rep, and_gates, _) -> 
+  | Some CP_ABE, Some PredicateEncoding, Some BoolForm(rep, and_gates, _) ->
      (L.length pp.pp_attributes) * rep * and_gates + 1
 
   | Some CP_ABE, Some PairEncoding, Some BoolForm(_, _, _) ->

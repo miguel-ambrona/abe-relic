@@ -6,21 +6,21 @@ open Predicates
 open BoolForms
 open MakeAlgebra
 open Matrix
-open PredEnc       
+open PredEnc
 
 let make_BF_PredEnc (n : int) =
-  
+
   let module BF_PredEnc (B : BilinearGroup) = struct
-      
+
     (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
-      
+
     module GaussElim = LinAlg(Zp)
-      
+
     type x = Zp.t list list
     type y = Zp.t list
 
     let n = n
-      
+
     let sE xM w_u_u0 =
       let ( +! ) = L.map2_exn ~f:B.G1.add in
       let l = L.length xM in
@@ -35,10 +35,10 @@ let make_BF_PredEnc (n : int) =
       let w = L.slice w_u_u0 0 l in
       let u0 = L.hd_exn (L.tl_exn w_u_u0) in
       u0 :: (L.map2_exn ~f:B.G2.mul w y)
-        
+
     let kE y alpha =
       alpha :: (mk_list B.G2.zero (L.length y))
-        
+
     let sD xM y c =
       let l' = L.length (L.hd_exn xM) in
       let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
@@ -53,7 +53,7 @@ let make_BF_PredEnc (n : int) =
            L.fold_left (L.tl_exn a_y_c)
              ~init:(L.hd_exn a_y_c)
              ~f:B.G1.add
-             
+
     let rD xM y d_d' =
       let l' = L.length (L.hd_exn xM) in
       let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
@@ -72,7 +72,7 @@ let make_BF_PredEnc (n : int) =
              (L.fold_left (L.tl_exn a_d)
                 ~init:(L.hd_exn a_d)
                 ~f:B.G2.add)
-             
+
     let set_x = function
       | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
          pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int:Zp.from_int policy
@@ -119,7 +119,7 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
       | yi :: rest_y ->
          if Zp.is_zero yi then expand_a (output @ [Zp.zero]) a rest_y
          else expand_a (output @ [L.hd_exn a]) (L.tl_exn a) rest_y
-           
+
     let get_a xM y =
       let l' = L.length (L.hd_exn xM) in
       let filtered = L.filter (L.zip_exn xM y) ~f:(fun (_,yi) -> not (Zp.is_zero yi)) |> unzip1 in
@@ -139,7 +139,7 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
     let s = s
     let r = r
     let w = w
-         
+
     let sE_matrix xM =
       let id_n = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:(L.length xM) in
       let xM_without_col1 = L.map xM ~f:(fun row -> L.tl_exn row) in
@@ -153,7 +153,7 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
       join_blocks
         [[ create_matrix Zp.zero ~m:1 ~n:l; create_matrix Zp.zero ~m:1 ~n:(l'-1); create_matrix Zp.one ~m:1 ~n:1 ];
          [ diag_y; create_matrix Zp.zero ~m:l ~n:(l'-1); create_matrix Zp.zero ~m:l ~n:1 ]]
-        
+
     let kE_vector y =
       Zp.one :: (mk_list Zp.zero (L.length y))
 
@@ -163,7 +163,7 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
         | Some a -> expand_a [] a y
       in
       L.map2_exn y a ~f:(fun yi ai -> Zp.mul yi ai)
-        
+
     let rD_vector xM y =
       let a = match get_a xM y with
         | None -> mk_list Zp.zero (L.length y) (* Decryption failed *)
@@ -193,10 +193,10 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
 
     let sep1 = "#"
     let sep2 = ";"
-                 
+
     let string_of_x x =
       list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
-                          
+
     let string_of_y y =
       list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
 
@@ -218,10 +218,10 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
     (* Predicate Encoding Characterization for the predicate P(x,y) defined as
          x(t) and y(t) are share a common factor in Zp[t]
      *)
-      
+
     module M = Matrix.MyGaussElim(Zp)
     module GaussElim = LinAlg(Zp)
-                             
+
     let half_discriminant v n =
       let rec aux output k =
         if k >= n then output
@@ -230,7 +230,7 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
           aux (output @ [new_row]) (k+1)
       in
       aux [] 0
-          
+
     let discriminant_matrix x y =
       (half_discriminant x r) @ (half_discriminant y s)
 
@@ -243,16 +243,16 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
     let s = s
     let r = r
     let w = s + r
-         
+
     let sE_matrix x =
       half_discriminant x r
 
     let rE_matrix y =
       half_discriminant y s
-                        
+
     let kE_vector _y =
       mk_list Zp.one s
-                                  
+
     let dec_vector x y =
       let mX = half_discriminant x r |> transpose_matrix in
       let mY = L.map (half_discriminant y s) ~f:(L.map ~f:Zp.neg) |> transpose_matrix in
@@ -283,7 +283,7 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
            aux new_coeffs rest_roots
       in
       aux [Zp.one; Zp.neg (L.hd_exn roots)] (L.tl_exn roots)
-                     
+
     let set_x = function   (* Reserved root for x is 0 *)
       | Discriminant (_,_,roots) ->
          if (L.length roots) > s then
@@ -310,7 +310,7 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
 
     let x_of_string str =
       L.map (S.split ~on:(Char.of_string sep) str) ~f:Zp.read_str
-            
+
     let y_of_string str =
       L.map (S.split ~on:(Char.of_string sep) str) ~f:Zp.read_str
   end
@@ -319,17 +319,17 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
 
 
 let make_InnerProduct_PredEnc (n : int) =
-  
+
   let module ZIP_PredEnc (B : BilinearGroup) = struct
-      
+
     (* Predicate Encoding for Ciphertet-Policy ABE for Zero Inner Product *)
-            
+
     type x = Zp.t list
     type y = Zp.t list
 
     let n = n+2
-      
-    let sE x u0_u1_w = 
+
+    let sE x u0_u1_w =
       let u1 = L.hd_exn (L.tl_exn u0_u1_w) in
       let w  = L.tl_exn (L.tl_exn u0_u1_w) in
       [B.G1.add u1 (vector_times_vector ~add:B.G1.add ~mul:B.G1.mul w x)]
@@ -339,26 +339,26 @@ let make_InnerProduct_PredEnc (n : int) =
       let u1 = L.hd_exn (L.tl_exn u0_u1_w) in
       let w  = L.tl_exn (L.tl_exn u0_u1_w) in
       (L.map2_exn (L.map y ~f:(B.G2.mul u0)) w ~f:B.G2.add) @ [u1]
-        
+
     let kE y alpha =
       (mk_list B.G2.zero (L.length y)) @ [alpha]
-                 
+
     let sD _x _y c =
       L.hd_exn c
-             
+
     let rD x _y d_d' =
       let d' = L.hd_exn (L.rev d_d') in
       let d  = L.tl_exn (L.rev d_d') |> L.rev in
       B.G2.add (vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d x) d'
-             
+
     let set_x = function
       | InnerProduct (_,x) -> x
       | _ -> failwith "wrong input"
-                      
+
     let set_y = function
       | InnerProduct (_,y) -> y
       | _ -> failwith "wrong input"
-                      
+
   (* *** String converions *)
 
     let sep = "#"
@@ -380,21 +380,21 @@ let make_InnerProduct_PredEnc (n : int) =
 
 
 let make_BroadcastEnc_PredEnc (t1 : int) (t2 : int) =
-  
+
   let module Broadcast_PredEnc (B : BilinearGroup) = struct
-      
+
     (* Predicate Encoding for Ciphertet-Policy ABE for Broadcast Encryption *)
-            
+
     type x = bool list
     type y = int * int
-               
+
     let n = t1 + t2
 
     let bool_dot_prod ~add ~zero x v =
       L.fold_left (L.zip_exn x v)
        ~init:zero
        ~f:(fun result (xi,vi) -> if xi then add result vi else result)
-       
+
     let sE x w_u =
       let w = L.slice w_u 0 t1 in
       let u = L.slice w_u t1 (t1+t2) in
@@ -408,25 +408,25 @@ let make_BroadcastEnc_PredEnc (t1 : int) (t2 : int) =
       let u = L.slice w_u t1 (t1+t2) in
       L.map (list_range 0 t2) ~f:(fun i -> if i = i2 then B.G2.add (L.nth_exn u i) (L.nth_exn w i1)
                                            else L.nth_exn u i
-                                 )     
-        
+                                 )
+
     let kE (_,i2) alpha =
       L.map (list_range 0 t2) ~f:(fun i -> if i = i2 then alpha else B.G2.zero)
-                 
+
     let sD _x (i1,_) c =
       L.nth_exn c i1
-             
+
     let rD x (i1,_) d =
       bool_dot_prod ~add:B.G2.add ~zero:B.G2.zero (L.slice x (i1*t2) ((i1+1)*t2)) d
-             
+
     let set_x = function
       | BroadcastEncVector (_,_,x) -> x
       | _ -> failwith "wrong input"
-                      
+
     let set_y = function
       | BroadcastEncIndex (_,_,(i1,i2)) -> (i1,i2)
       | _ -> failwith "wrong input"
-                      
+
   (* *** String converions *)
 
     let sep = "#"

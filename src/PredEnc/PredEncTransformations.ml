@@ -80,7 +80,7 @@ module Disjunction_Characterization (C1 : PredEnc_Characterization) (C2 : PredEn
     | _ -> failwith "invalid string"
 end
 
-                                                                                                        
+
 module Negation_Characterization (C : PredEnc_Characterization) = struct
 
   type x = C.x
@@ -89,7 +89,7 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
   module GaussElim = LinAlg(Zp)
 
   let predicate x y = not (C.predicate x y)
-  
+
   let s = C.w
   let r = C.w + 1
   let w = C.r + C.w + C.s
@@ -106,12 +106,12 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
       [ transpose_matrix mAr; id_r; create_matrix Zp.zero ~m:C.w ~n:C.s ];
       [ [L.map k ~f:Zp.neg]; create_matrix Zp.zero ~m:1 ~n:C.w; create_matrix Zp.zero ~m:1 ~n:C.s];
     ]
-  let kE_vector _y = 
+  let kE_vector _y =
     (mk_list Zp.zero C.w) @ [Zp.one]
 
   let sD_vector x y =
     C.get_witness x y
-       
+
   let rD_vector x y =
     let w' = C.get_witness x y in
     w' @ [Zp.one]
@@ -131,7 +131,7 @@ module Negation_Characterization (C : PredEnc_Characterization) = struct
   let y_of_string = C.y_of_string
 end
 
-                                                                    
+
 module Conjunction_Characterization  (C1 : PredEnc_Characterization) (C2 : PredEnc_Characterization) = struct
 
   let diag_join m1 m2 =
@@ -148,12 +148,12 @@ module Conjunction_Characterization  (C1 : PredEnc_Characterization) (C2 : PredE
   let w = C1.w + C2.w + 1
 
   let sE_matrix (x1,x2) =
-    let big_block = diag_join (C1.sE_matrix x1) (C2.sE_matrix x2) in 
-    join_blocks [ [big_block; create_matrix Zp.zero ~m:(L.length big_block) ~n:1 ]]                
+    let big_block = diag_join (C1.sE_matrix x1) (C2.sE_matrix x2) in
+    join_blocks [ [big_block; create_matrix Zp.zero ~m:(L.length big_block) ~n:1 ]]
   let rE_matrix (y1,y2) =
     let big_block = diag_join (C1.rE_matrix y1) (C2.rE_matrix y2) in
     let last_col  = transpose_matrix [(C1.kE_vector y1) @ (L.map (C2.kE_vector y2) ~f:Zp.neg)] in
-    join_blocks [ [big_block; last_col]]                
+    join_blocks [ [big_block; last_col]]
   let kE_vector (y1,y2) = (C1.kE_vector y1) @ (C2.kE_vector y2)
   let sD_vector (x1,x2) (y1,y2) =
     let b1 = C1.sD_vector x1 y1 in
@@ -165,7 +165,7 @@ module Conjunction_Characterization  (C1 : PredEnc_Characterization) (C2 : PredE
     let b2 = C2.rD_vector x2 y2 in
     let half = Zp.inv (Zp.add Zp.one Zp.one) in
     L.map (b1 @ b2) ~f:(Zp.mul half)
-          
+
   let get_witness (x1,x2) (y1,y2) =
     if not (C1.predicate x1 y1) then
       let w1 = C1.get_witness x1 y1 in
@@ -192,7 +192,7 @@ module Conjunction_Characterization  (C1 : PredEnc_Characterization) (C2 : PredE
     | _ -> failwith "invalid string"
 
 end
-    
+
 
 module Dual_Characterization (C : PredEnc_Characterization) = struct
 
@@ -200,7 +200,7 @@ module Dual_Characterization (C : PredEnc_Characterization) = struct
   type y = C.x
 
   let predicate x y = C.predicate y x
-  
+
   let s = C.r
   let r = C.s + 1
   let w = C.w + 1

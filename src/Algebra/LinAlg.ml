@@ -35,9 +35,9 @@ module LinAlg (Field : Field) = struct
   let one = Field.one
   let zero = Field.zero
   let is_zero = Field.is_zero
-    
+
   type col = int
-    
+
   type row = int
 
   type solved =
@@ -87,7 +87,7 @@ module LinAlg (Field : Field) = struct
     let pivot_inverse = inv m.(r).(c) in
     iter_cols_with_sol m (fun c' ->
       m.(r).(c') <- m.(r).(c') *! pivot_inverse)
-      
+
   (** Find all-zero columns and columns that only have one non-zero entry. *)
   let classify_cols m =
     let col_is_z    = make (cols m + 1) false in (* i-th column is zero vector, also track for solution *)

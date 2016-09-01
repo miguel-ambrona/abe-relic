@@ -15,24 +15,24 @@ let get_prime() =
      prime := Some p;
      p
   | Some p -> p
-     
+
 module Zp = struct
   type t = R.bn
   let p = get_prime()
   let pp fmt a = F.fprintf fmt "%s" (R.bn_write_str a ~radix:10)
   let add a b = R.bn_mod (R.bn_add a b) p
   let neg a = R.bn_mod (R.bn_neg a) p
-  let mul a b = R.bn_mod (R.bn_mul a b) p    
+  let mul a b = R.bn_mod (R.bn_mul a b) p
   let inv a =
     let (d,u,_v) = R.bn_gcd_ext a p in
     if R.bn_equal d (R.bn_one ()) then R.bn_mod u p
-    else failwith ("Inverse of " ^ (R.bn_write_str a ~radix:10)  ^ 
+    else failwith ("Inverse of " ^ (R.bn_write_str a ~radix:10)  ^
                       " mod " ^ (R.bn_write_str p ~radix:10) ^ " does not exist")
 
   let one = R.bn_one ()
   let zero = R.bn_zero ()
   let is_zero a = R.bn_is_zero (R.bn_mod a p)
-    
+
   let samp () = zp_samp_ref := !zp_samp_ref + 1; R.bn_rand_mod p
   let write_str t = R.bn_write_str (R.bn_mod t p) ~radix:10
   let read_str str = R.bn_mod (R.bn_read_str str ~radix:10) p
@@ -54,9 +54,9 @@ let make_BilinearGroup (k : int) =
 
   let module G1 = struct
     type atom = R.g1
-      
+
     type t = atom list
-                  
+
     let atom_add a a' =
       if R.g1_is_infty a then a'
       else if R.g1_is_infty a' then a
@@ -89,7 +89,7 @@ let make_BilinearGroup (k : int) =
     type atom = R.g2
 
     type t = atom list
-                  
+
     let atom_add a a' =
       if R.g2_is_infty a then a'
       else if R.g2_is_infty a' then a
@@ -130,7 +130,7 @@ let make_BilinearGroup (k : int) =
     let equal = R.gt_equal
 
     type atom = t
-                  
+
     let atom_gen = R.gt_gen ()
     let atom_from_dlog = R.gt_exp atom_gen
     let to_list h = [h]

@@ -16,7 +16,7 @@ type predicate_type =
 
 let string_of_predicate_type = function
   | BoolForm (r,b,n) ->
-     "boolean_formula(" ^ (string_of_int r) ^ " repetitions, " 
+     "boolean_formula(" ^ (string_of_int r) ^ " repetitions, "
      ^ (string_of_int b) ^ " and-gates, " ^ (string_of_int n) ^ " n_attrs)"
 
 type encoding =
@@ -27,7 +27,7 @@ let string_of_encoding = function
   | PredicateEncoding -> "PREDICATE_ENCODING"
   | PairEncoding      -> "PAIR_ENCODING"
 
-type public_parameters = { 
+type public_parameters = {
   pp_scheme: scheme_type option;
   pp_encoding : encoding option;
   pp_predicate: predicate_type option;
@@ -76,7 +76,7 @@ let eval_pp_cmds cmds =
   | _, None -> failwith "Unspecified predicate"
   | _ -> pp
 
-type mpk = { 
+type mpk = {
   mpk_pp: public_parameters;
   mpk_key: string option;
 }
@@ -121,7 +121,7 @@ let eval_msk_cmd cmd =
   match cmd with
   | Msk (s) -> { msk_key = Some s }
 
-type eval_policy = 
+type eval_policy =
   | Eval_OR of eval_policy * eval_policy
   | Eval_AND of eval_policy * eval_policy
   | Eval_leaf of string
@@ -171,6 +171,6 @@ let empty_ct = {
 type ct_cmd =
   | Ct of string
 
-let eval_ct_cmd cmd = 
+let eval_ct_cmd cmd =
   match cmd with
   | Ct (s) -> { ct_cipher = Some s }

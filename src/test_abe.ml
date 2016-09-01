@@ -1,6 +1,6 @@
 open Core_kernel.Std
 open Abbrevs
-       
+
 let main =
   if Array.length Sys.argv = 1 then
     (Test.test_predEnc (); F.print_flush ();

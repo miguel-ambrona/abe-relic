@@ -56,7 +56,7 @@ let pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int p =
     if l > and_gates + 1 then failwith ("The number of AND gates must be at most " ^ (string_of_int (and_gates-1)))
     else row @ (mk_list (t_of_int 0) (and_gates + 1 - l))
   )
-  
+
 let pred_enc_set_attributes ~one ~zero ~nattrs ~rep attrs =
   let rec repeat output = function
     | [] -> output
@@ -86,7 +86,7 @@ let pair_enc_expand_matrix ~n1 ~n2 matrix labels =
     let matrix' = extended_cols @ (mk_list empty_row (n1 - rows)) in
     let extended_labels = labels @ (mk_list (Att(0)) (n1 - rows)) in
     matrix', extended_labels
-                                           
+
 let pair_enc_matrix_of_policy ~n1 ~n2 ~t_of_int p =
   let matrix, labels = L.unzip (matrix_of_formula p) in
   let matrix', labels' = pair_enc_expand_matrix ~n1 ~n2 matrix labels in
@@ -115,7 +115,7 @@ let rec eval_boolean_formula ~attributes = function
   | And (f1,f2) ->
      (eval_boolean_formula ~attributes f1) && (eval_boolean_formula ~attributes f2)
   | Leaf (a) -> L.mem attributes a
-  
+
 
 (* * Generation of Boolean Formulas *)
 

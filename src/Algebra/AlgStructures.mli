@@ -48,7 +48,7 @@ end
 module type BilinearGroup =
   sig
     val p  : R.bn
-    module G1 : Group 
+    module G1 : Group
     module G2 : Group
     module Gt : Group
     val e  : G1.t -> G2.t -> Gt.t

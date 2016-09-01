@@ -24,7 +24,7 @@ let print_references () =
   F.printf "Zp_samp: %d,\tG1_add: %d,\tG2_add: %d,\tGt_mul: %d\t" !zp_samp_ref !g1_add_ref !g2_add_ref !gt_mul_ref;
   F.printf "G1_mul: %d,\tG2_mul: %d,\tGt_exp: %d,\te_map: %d\n\n" !g1_mul_ref !g2_mul_ref !gt_exp_ref !e_map_ref;
   F.print_flush ()
-       
+
 let rec equal_lists ~equal list1 list2 =
   match list1, list2 with
   | [], [] -> true
@@ -40,7 +40,7 @@ let list_range i j =
 
 let g1_write = R.g1_write_bin ~compress:false
 let g2_write = R.g2_write_bin ~compress:false
-let gt_write = R.gt_write_bin ~compress:false  
+let gt_write = R.gt_write_bin ~compress:false
 
 let list_empty_intersection ~equal list1 list2 =
   let rec aux = function
@@ -200,7 +200,7 @@ let list_to_matrix list n =
       aux (matrix @ [l1]) l2
   in
   aux [] list
-    
+
 let is_initialized = ref false
 
 let init_relic () =

@@ -15,7 +15,7 @@ let split_string_on_word string word =
       (String.sub string ~pos:(k+n) ~len:((String.length string)-(k+n)) )
     else aux (k+1)
   in
-  aux 0    
+  aux 0
 
 let input_file filename =
   let in_channel = open_in filename in
@@ -29,7 +29,7 @@ let input_file filename =
   let lines = go [] in
   let _ = close_in_noerr in_channel in
   String.concat ~sep:"\n" (L.rev lines)
- 
+
 let search_argument a =
   let rec aux i =
     if Sys.argv.(i) = a then Sys.argv.(i+1)
@@ -53,7 +53,7 @@ let main =
 
        let module ABE = (val Analyze.abe_from_pp pp) in
        let mpk, msk = ABE.setup () in
-              
+
        let out_mpk_file = open_out mpk_file in
        fprintf out_mpk_file "%s\nmpk = %s." (Eval.string_of_pp pp) (ABE.string_of_mpk mpk);
        let _ = close_out_noerr out_mpk_file in
@@ -89,7 +89,7 @@ let main =
 
        begin match out_file with
        | None -> Format.printf "%s\n" sk_y_str
-       | Some file -> 
+       | Some file ->
           let out = open_out file in
           fprintf out "%s\n" sk_y_str;
           let _ = close_out_noerr out in
@@ -107,7 +107,7 @@ let main =
 
        let module ABE = (val Analyze.abe_from_pp pp) in
        let mpk = ABE.mpk_of_string (get_option_exn eval_mpk.mpk_key) in
-       
+
        let x = match pp.pp_scheme with
          | Some CP_ABE ->
             let policy_str = try search_argument "-policy" with | Not_found -> failwith "missing argument -policy" in
@@ -146,14 +146,14 @@ let main =
        let sep = "___BEGIN_ABE_CIPHERTEXT___"  in
 
        let aes_ct, abe_ct = split_string_on_word (input_file ct_file) sep in
-       
+
        let eval_mpk = Parse.mpk_cmds (input_file mpk_file) |> Eval.eval_mpk_cmds in
-       
+
        let pp = eval_mpk.mpk_pp in
-       
+
        let module ABE = (val Analyze.abe_from_pp pp) in
        let mpk = ABE.mpk_of_string (get_option_exn eval_mpk.mpk_key) in
-       
+
        let eval_sk = Parse.sk_cmds (input_file sk_file) |> Eval.eval_sk_cmd in
        let sk_y = ABE.sk_of_string (get_option_exn eval_sk.sk_key) in
 
