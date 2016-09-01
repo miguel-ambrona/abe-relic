@@ -1,8 +1,12 @@
-open AlgStructures
-open Predicates
-open MakeAlgebra
+(* Predicate Encodings as defined in
+  "Improved Dual System ABE in Prime-Order Groups via Predicate Encodings"
+   Jie Chen, Romain Gay and Hoeteck Wee at IACR-EUROCRYPT-2015.
+ *)
 
-(* Documented in mli file. *)       
+open AlgStructures
+open MakeAlgebra
+open Predicates
+       
 module type PredEnc =
   functor (B : BilinearGroup) ->
     sig
@@ -25,7 +29,6 @@ module type PredEnc =
       val y_of_string : string -> y
     end
 
-(* Documented in mli file. *)
 module type PredEnc_Characterization = sig
   type x
   type y

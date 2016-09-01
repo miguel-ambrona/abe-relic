@@ -4,7 +4,7 @@ open Eval
 open Abbrevs
 open DualSystemG
 open MakeAlgebra
-open PredEnc
+open MakePredEnc
 open PairEnc
 open Predicates
 

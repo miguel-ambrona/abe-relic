@@ -3,11 +3,11 @@ open Util
 open BoolForms
 open DualSystemG
 open MakeAlgebra
-open PredEnc
 open PairEnc
 open ABE
 open Printf
-
+open MakePredEnc
+       
 let round int decimals =
   let factor = 10.0**decimals in
   Pervasives.ceil ((factor *. int)) /. factor

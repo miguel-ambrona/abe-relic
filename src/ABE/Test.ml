@@ -2,11 +2,11 @@ open Abbrevs
 open DualSystemG
 open BoolForms
 open MakeAlgebra
-open PredEnc
 open PairEnc
 open Predicates
 open ABE
-
+open PredEncTransformations
+open MakePredEnc
 
 (* ** Test *)
 
