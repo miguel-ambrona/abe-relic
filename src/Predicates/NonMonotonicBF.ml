@@ -1,21 +1,21 @@
 open Abbrevs
 open Util
 open MakeAlgebra
-       
+
 type non_monotonic_bool_formula =
   | OR  of non_monotonic_bool_formula * non_monotonic_bool_formula
   | AND of non_monotonic_bool_formula * non_monotonic_bool_formula
-  | NEG of non_monotonic_bool_formula
+  | NOT of non_monotonic_bool_formula
   | LEAF of int
 
 let rec negation_normal_form = function
-  | NEG (OR  (f1, f2)) -> AND ( negation_normal_form (NEG (f1)), negation_normal_form (NEG (f2)))
-  | NEG (AND (f1, f2)) -> OR  ( negation_normal_form (NEG (f1)), negation_normal_form (NEG (f2)))
-  | NEG (NEG f)  -> negation_normal_form f                        
+  | NOT (OR  (f1, f2)) -> AND ( negation_normal_form (NOT (f1)), negation_normal_form (NOT (f2)))
+  | NOT (AND (f1, f2)) -> OR  ( negation_normal_form (NOT (f1)), negation_normal_form (NOT (f2)))
+  | NOT (NOT f)  -> negation_normal_form f
   | OR  (f1, f2) -> OR  (negation_normal_form f1, negation_normal_form f2)
   | AND (f1, f2) -> AND (negation_normal_form f1, negation_normal_form f2)
   | f -> f
-  
+
 type arithmetic_formula =
   | AF_Add of arithmetic_formula * arithmetic_formula
   | AF_Mul of arithmetic_formula * arithmetic_formula
@@ -39,7 +39,7 @@ let rec af_normal_form = function
   | af -> af
 
 type arithmetic_formula_normal_form = (Zp.t * (int list)) list
-                                                             
+
 let af_to_af_normal_form af =
   let af = af_normal_form af in
   let rec collect_term coeff vars = function
@@ -49,7 +49,7 @@ let af_to_af_normal_form af =
        (Zp.mul c1 c2), v1 @ v2
     | AF_Const (a) -> (Zp.mul coeff a, vars)
     | AF_Var   (v) -> (coeff, (v :: vars))
-    | _ -> assert false
+    | _ -> assert falseb
   in
   let rec add_summands output = function
     | [] -> output
@@ -72,11 +72,11 @@ let non_monotonic_bf_to_arithmetic_formula nmbf =
   let rec aux = function
     | OR  (bf1, bf2) -> AF_Add (aux bf1, aux bf2)
     | AND (bf1, bf2) -> AF_Mul (aux bf1, aux bf2)
-    | NEG  (bf) -> AF_Add (AF_Const Zp.one, AF_Mul( AF_Const (Zp.neg Zp.one), aux bf))
+    | NOT  (bf) -> AF_Add (AF_Const Zp.one, AF_Mul( AF_Const (Zp.neg Zp.one), aux bf))
     | LEAF (s)  -> AF_Var (s)
   in
   aux (negation_normal_form nmbf)
-      
+
 let pp_arithmetic_formula_nf _fmt afn =
   let pp_var _ v = F.printf "x%d" v in
   let pp_term _ (c,vars) =

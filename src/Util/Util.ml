@@ -80,7 +80,7 @@ let pp_matrix pp_elt f m =
 
 let mk_list el n =
   let rec aux output n =
-    if n = 0 then output
+    if n <= 0 then output
     else aux (el :: output) (n-1)
   in
   aux [] n

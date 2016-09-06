@@ -7,8 +7,10 @@ open Matrix
 type weight =
   | Weight_Var of int
   | Weight_Const of Zp.t
+
 type node =
   | Node of int
+
 type edge  = {
     edge_end_node : node;
     edge_weight : weight
@@ -81,8 +83,10 @@ type arithmetic_span_program = {
 let pp_asp _fmp asp =
   F.printf "rep = %d\ny =\n%a\nz=\n%a" asp.asp_rep (pp_matrix Zp.pp) asp.asp_yj (pp_matrix Zp.pp) asp.asp_zj
 
-let create_asp_from_formula (f : arithmetic_formula_normal_form) (n : int) (rep : int) (equality : bool) =
-  let matrix = adjacency_matrix (create_graph_from_formula f) in
+let create_asp_from_formula (f : arithmetic_formula_normal_form) ?(equality = true) (n : int) (rep : int) =
+  let matrix = adjacency_matrix (create_graph_from_formula f) |> L.rev |> L.tl_exn |> L.rev
+               |> L.map ~f:(fun row -> L.tl_exn row)
+  in
   let extended =
     (L.hd_exn matrix) ::
       (L.map (list_range 1 (L.length matrix))
@@ -146,12 +150,12 @@ let pp_weight _fmt = function
   | Weight_Const (a) -> F.printf "%a" Zp.pp a
 
 let test () =
-  let formula = OR (OR (LEAF 1, AND (LEAF 3, LEAF 4)), OR( AND(LEAF 2, NEG(LEAF 3)), NEG(AND(LEAF 4, LEAF 5)))) in
+  let formula = OR (OR (LEAF 1, AND (LEAF 3, LEAF 4)), OR( AND(LEAF 2, NOT(LEAF 3)), NOT(AND(LEAF 4, LEAF 5)))) in
   let arithmetic_f = non_monotonic_bf_to_arithmetic_formula formula in
   let afn = af_to_af_normal_form arithmetic_f in
   F.printf "%a" pp_arithmetic_formula_nf afn;
   F.print_flush();
-  let asp = create_asp_from_formula afn 5 3 false in
+  let asp = create_asp_from_formula afn 5 3 ~equality:false in
   F.printf "%a" pp_asp asp;
   F.print_flush();
   ()

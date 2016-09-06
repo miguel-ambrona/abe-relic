@@ -4,7 +4,7 @@ open Abbrevs
 let main =
   if Array.length Sys.argv = 1 then
     (
-     ArithmeticSpanProgram.test();
+     Test.test_ArithmeticSpanProgram ();
      Test.test_predEnc (); F.print_flush ();
      Test.test_predEnc_Broadcast (); F.print_flush ();
      Test.test_predEnc_ZIP (); F.print_flush ();
