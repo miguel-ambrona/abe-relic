@@ -439,10 +439,10 @@ let test_predEnc_Broadcast () =
 
 let test_ArithmeticSpanProgram () =
 
-  let n = 7 in
+  let n = 20 in
   let rep = 2 in
 
-  let module PE = (val make_ArithmeticSpanProgram n rep) in
+  let module PE = (val make_ArithmeticSpanProgram_PredEnc n rep) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let t1 = Unix.gettimeofday() in
@@ -468,6 +468,38 @@ let test_ArithmeticSpanProgram () =
     F.printf "Pred Enc. ArithSP test succedded!\t Time: \027[32m%F\027[0m seconds\n"
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Predicate Encodings Arithmetic Span Program test failed"
+
+let test_Fast_ArithmeticSpanProgram () =
+
+  let n = 20 in
+  let rep = 2 in
+
+  let module PE = (val make_Fast_ArithmeticSpanProgram_PredEnc n rep) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  let x = ABE.set_x (BoolForm_Attrs(n, rep, [ Att(4); Att(5) ])) in
+
+  let msg = ABE.rand_msg () in
+  let ct_x = ABE.enc mpk x msg in
+
+  let formula = OR (AND (LEAF 1, AND (LEAF 2, LEAF 3)), AND (LEAF 4, LEAF 5)) in
+  let y = ABE.set_y (NonMonBoolForm(rep, formula)) in
+  let sk_y = ABE.keyGen mpk msk y in
+  let msg' = ABE.dec mpk sk_y ct_x in
+
+  let formula' = AND(LEAF 4, NOT(LEAF 5)) in
+  let y' = ABE.set_y (NonMonBoolForm(rep, formula')) in
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
+
+  let t2 = Unix.gettimeofday() in
+
+  if (B.Gt.equal msg msg') && not(B.Gt.equal msg msg'') then
+    F.printf "Pred Enc. Fast ASP test succedded!\t Time: \027[32m%F\027[0m seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
+  else failwith "Predicate Encodings Fast Arithmetic Span Program test failed"
 
 let test_pairEnc () =
   let module Par = struct

@@ -451,7 +451,7 @@ let make_BroadcastEnc_PredEnc (t1 : int) (t2 : int) =
   (module Broadcast_PredEnc : PredEnc)
 
 
-let make_ArithmeticSpanProgram (n_x : int) (rep : int) =
+let make_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
 
   let module ArithmeticSpanProgram_PredEnc (B : BilinearGroup) = struct
 
@@ -521,6 +521,101 @@ let make_ArithmeticSpanProgram (n_x : int) (rep : int) =
          let f row = (mk_list Zp.zero (n_x*rep-(L.length row))) @ row in
          let afn = af_to_af_normal_form (non_monotonic_bf_to_arithmetic_formula formula) in
          let asp = create_asp_from_formula afn n_x rep ~equality:false in
+         (L.map asp.asp_yj ~f, L.map asp.asp_zj ~f)
+      | _ -> failwith "wrong input"
+
+
+  (* *** String converions *)
+
+    let sep1 = "#"
+    let sep2 = ";"
+
+    let string_of_y (y,z) =
+      list_list_to_string ~sep1 ~sep2 (L.map (y @ z) ~f:(L.map ~f:Zp.write_str))
+
+    let string_of_x x =
+      list_to_string ~sep:sep2 (L.map x ~f:Zp.write_str)
+
+    let y_of_string str =
+      let yz = L.map (S.split ~on:(Char.of_string sep1) str)
+        ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
+      in
+      L.split_n yz ((L.length yz) / 2)
+
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
+  end
+  in
+  (module ArithmeticSpanProgram_PredEnc : PredEnc)
+
+
+
+let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
+
+  let module ArithmeticSpanProgram_PredEnc (B : BilinearGroup) = struct
+
+    (* Predicate Encoding for Arithmetic Span Programs *)
+
+    module GaussElim = LinAlg(Zp)
+
+    type x = Zp.t list
+    type y = (Zp.t list list) * (Zp.t list list)
+
+    let l = n_x*rep
+    let l' = l
+    let n = 2*l
+
+    let sE x w_v_u =
+      let ( +! ) = L.map2_exn ~f:B.G1.add in
+      let w = L.slice w_v_u 0 l in
+      let v = L.slice w_v_u l (2*l) in
+      (L.map v ~f:B.G1.neg) +! (L.map2_exn ~f:B.G1.mul w x)
+
+    let rE (y,z) w_v_u =
+      let ( +! ) = L.map2_exn ~f:B.G2.add in
+      let w = L.slice w_v_u 0 l in
+      let v = L.slice w_v_u l (2*l) in
+      let mul exp g = B.G2.mul g exp in
+      let wz = matrix_times_vector ~add:B.G2.add ~mul (transpose_matrix z) w in
+      let vy = matrix_times_vector ~add:B.G2.add ~mul (transpose_matrix y) v in
+      wz +! vy
+
+    let kE _ alpha =
+      (mk_list B.G2.zero (l'-1)) @ [alpha]
+
+    let sD x (y,z) c =
+      let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
+      let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
+      let l = L.length (L.hd_exn xy_z) in
+      let matrix = xy_z @ [(mk_list Zp.zero (l'-1)) @ [Zp.one]] in
+      match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
+      | None -> B.G1.zero (* Decryption failed *)
+      | Some a ->
+         let b = L.map ~f:Zp.neg (matrix_times_vector ~add:Zp.add ~mul:Zp.mul y a) in
+         vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c b
+
+    let rD x (y,z) d =
+      let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
+      let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
+      let l = L.length (L.hd_exn xy_z) in
+      let matrix = xy_z @ [(mk_list Zp.zero (l'-1)) @ [Zp.one]] in
+      match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
+      | None -> B.G2.zero (* Decryption failed *)
+      | Some a ->
+         vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d a
+
+    let set_x = function
+      | BoolForm_Attrs (nattrs, rep', attrs) ->
+         assert (rep = rep');
+         pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep (L.map attrs ~f:(fun a -> Leaf(a)))
+      | _ -> failwith "wrong input"
+
+    let set_y = function
+      | NonMonBoolForm (rep', formula) ->
+         assert (rep = rep');
+         let f row = (mk_list Zp.zero (n_x*rep-(L.length row))) @ row in
+         let afn = af_to_af_normal_form (non_monotonic_bf_to_arithmetic_formula formula) in
+         let asp = create_asp_from_formula afn n_x rep ~equality:true in
          (L.map asp.asp_yj ~f, L.map asp.asp_zj ~f)
       | _ -> failwith "wrong input"
 

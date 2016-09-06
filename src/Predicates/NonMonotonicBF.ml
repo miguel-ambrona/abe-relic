@@ -49,7 +49,7 @@ let af_to_af_normal_form af =
        (Zp.mul c1 c2), v1 @ v2
     | AF_Const (a) -> (Zp.mul coeff a, vars)
     | AF_Var   (v) -> (coeff, (v :: vars))
-    | _ -> assert falseb
+    | _ -> assert false
   in
   let rec add_summands output = function
     | [] -> output
