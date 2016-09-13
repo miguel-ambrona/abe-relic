@@ -8,6 +8,7 @@ open Predicates
 open ABE
 open PredEncTransformations
 open MakePredEnc
+open MakePredEncChar
 
 
 (* ** Test *)
