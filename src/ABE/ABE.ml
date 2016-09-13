@@ -145,6 +145,7 @@ end
 module PairEncABE (B : BilinearGroup) (DSG : DualSystemGroup) (PE : PairEnc) = struct
 
   module DSG = DSG (B)
+  module P = Zp_Poly
 
   type mpk = DSG.pp * DSG.img_mu
   type msk = B.G2.t

@@ -3,12 +3,12 @@ open DualSystemG
 open BoolForms
 open NonMonotonicBF
 open MakeAlgebra
-open PairEnc
 open Predicates
 open ABE
 open PredEncTransformations
 open MakePredEnc
 open MakePredEncChar
+open MakePairEnc
 
 
 (* ** Test *)
@@ -503,27 +503,26 @@ let test_Fast_ArithmeticSpanProgram () =
   else failwith "Predicate Encodings Fast Arithmetic Span Program test failed"
 
 let test_pairEnc () =
-  let module Par = struct
-    let par_n1 = 5    (* Bound on the number of Leaf nodes in the boolean formula*)
-    let par_n2 = 4    (* n2-1 = Bound on the number of AND gates *)
-    let par_T = 4     (* Bound on the number of attributes in a key *)
-  end
-  in
-  let module ABE = PairEncABE (B) (DSG) (Boolean_Formula_PairEnc (Par)) in
+  let n1 = 5 in   (* Bound on the number of Leaf nodes in the boolean formula*)
+  let n2 = 4 in   (* n2-1 = Bound on the number of AND gates *)
+  let t = 4 in    (* Bound on the number of attributes in a key *)
+
+  let module PE = (val make_BF_PairEnc n1 n2 t) in
+  let module ABE = PairEncABE (B) (DSG) (PE) in
 
   let t1 = Unix.gettimeofday() in
 
-  let mA, pi = ABE.set_x (Predicates.BoolForm_Policy(Par.par_n1, Par.par_n2, 0, policy1 |. policy2)) in
+  let x = ABE.set_x (Predicates.BoolForm_Policy(n1, n2, 0, policy1 |. policy2)) in
 
   let mpk, msk = ABE.setup () in
   let msg = B.Gt.samp () in
-  let ct_x = ABE.enc mpk (mA,pi) msg in
+  let ct_x = ABE.enc mpk x msg in
 
-  let setS = ABE.set_y (Predicates.BoolForm_Attrs(Par.par_n1, Par.par_n2, [ phd_att; cs_att ])) in
+  let setS = ABE.set_y (Predicates.BoolForm_Attrs(n1, n2, [ phd_att; cs_att ])) in
   let sk_y = ABE.keyGen mpk msk setS in
   let msg' = ABE.dec mpk sk_y ct_x in
 
-  let setS' = ABE.set_y (Predicates.BoolForm_Attrs(Par.par_n1, Par.par_n2, [ tall_att; dark_att; phd_att; maths_att ])) in
+  let setS' = ABE.set_y (Predicates.BoolForm_Attrs(n1, n2, [ tall_att; dark_att; phd_att; maths_att ])) in
 
   let sk_y' = ABE.keyGen mpk msk setS' in
   let msg'' = ABE.dec mpk sk_y' ct_x in

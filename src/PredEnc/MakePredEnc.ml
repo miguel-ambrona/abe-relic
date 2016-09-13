@@ -13,7 +13,7 @@ open NonMonotonicBF
 
 (* ** Making Predicate Encodings *)
 
-(* *** Monotonic Boolean Formula *)
+(* *** Monotonic Boolean Formulas *)
 
 (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
 

@@ -1,3 +1,4 @@
+open Poly
 open Core_kernel.Std
 open Abbrevs
 open Util
@@ -152,3 +153,11 @@ let make_BilinearGroup (k : int) =
       let gt_list = L.map2_exn (G1.to_list g1) (G2.to_list g2) ~f:R.e_pairing in
       L.fold_left (L.tl_exn gt_list) ~init:(L.hd_exn gt_list) ~f:Gt.add
   end : BilinearGroup)
+
+module Zp_Poly = MakePoly(
+  struct
+    type t = string
+    let pp = pp_string
+    let equal = (=)
+    let compare = compare
+  end) (Zp)

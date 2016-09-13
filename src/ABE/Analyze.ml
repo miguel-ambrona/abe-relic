@@ -5,7 +5,7 @@ open Abbrevs
 open DualSystemG
 open MakeAlgebra
 open MakePredEnc
-open PairEnc
+open MakePairEnc
 open Predicates
 
 let abe_from_pp pp =
@@ -16,13 +16,8 @@ let abe_from_pp pp =
      let module PE = (val make_BF_PredEnc 3) in
      (module PredEncABE (B) (DSG) (PE) : ABE)
   | Some CP_ABE, Some PairEncoding, Some BoolForm(n1,n2,t) ->
-     let module Par = struct
-         let par_n1 = n1
-         let par_n2 = n2+1
-         let par_T = t
-     end
-     in
-     (module PairEncABE (B) (DSG) (Boolean_Formula_PairEnc (Par)) : ABE)
+     let module PE = (val make_BF_PairEnc n1 (n2+1) t) in
+     (module PairEncABE (B) (DSG) (PE) : ABE)
   | None, _, _ -> failwith "scheme not provided"
   | _, None, _ -> failwith "encoding not provided"
   | _, _, None -> failwith "predicate not provided"
