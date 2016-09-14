@@ -405,10 +405,11 @@ let test_predEnc_ZIP () =
 
 let test_predEnc_Broadcast () =
 
-  let t = 10 in
-  let t' = 10 in
+  let t = 60 in
+  let t' = 60 in
 
-  let module PE = (val make_BroadcastEnc_PredEnc t t') in
+  let module C = (val make_BroadcastEnc_Characterization t t') in
+  let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
   let t1 = Unix.gettimeofday() in

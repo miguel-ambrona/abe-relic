@@ -223,3 +223,81 @@ let make_ShareRoot_PredEnc_Characterization (s : int) (r : int) =
   end
   in
   (module Characterization : PredEnc_Characterization)
+
+
+(* *** Broadcast Encryption *)
+
+(* Predicate Encoding Characterization for Broadcast Encryption *)
+
+let make_BroadcastEnc_Characterization (t1 : int) (t2 : int) =
+
+  let module Characterization = struct
+
+    type x = bool list
+    type y = int * int
+
+    let predicate x (i1,i2) =
+      let x_i1 = L.slice x (i1*t2) ((i1+1)*t2) in
+      L.nth_exn x_i1 i2
+
+    let x_to_zp x = L.map x ~f:(fun xi -> if xi then Zp.one else Zp.zero)
+
+    let s = t1
+    let r = t2
+    let w = s + r
+
+    let sE_matrix x =
+      let id_s = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:s in
+      let mX = L.map (list_range 0 t1) ~f:(fun i -> L.slice (x_to_zp x) (i*t2) ((i+1)*t2)) in
+      join_blocks [[id_s; mX]]
+
+    let rE_matrix (i1,i2) =
+      let id_r = identity_matrix ~zero:Zp.zero ~one:Zp.one ~n:r in
+      let mY = L.map (list_range 0 t2)
+                 ~f:(fun i -> if i = i2 then (mk_list Zp.zero i1) @ [Zp.one] @ (mk_list Zp.zero (t1-i1-1))
+                              else mk_list Zp.zero t1
+                    )
+      in
+      join_blocks [[mY; id_r]]
+
+    let kE_vector (_i1,i2) =
+      (mk_list Zp.zero i2) @ [Zp.one] @ (mk_list Zp.zero (t2-i2-1))
+
+    let sD_vector _x (i1,_i2) =
+      (mk_list Zp.zero i1) @ [Zp.one] @ (mk_list Zp.zero (t1-i1-1))
+
+    let rD_vector x (i1,_i2) =
+      L.slice x (i1*t2) ((i1+1)*t2) |> x_to_zp
+
+    let get_witness x (_i1,i2) =
+      let e_i2 = (mk_list Zp.zero i2) @ [Zp.one] @ (mk_list Zp.zero (t2-i2-1)) in
+      (L.map (list_range 0 t1) ~f:(fun i -> if (L.nth_exn x (i*t2+i2)) then Zp.neg Zp.one else Zp.zero)) @ e_i2
+
+    let set_x = function
+      | BroadcastEncVector (_,_,x) -> x
+      | _ -> failwith "wrong input"
+
+    let set_y = function
+      | BroadcastEncIndex (_,_,(i1,i2)) -> (i1,i2)
+      | _ -> failwith "wrong input"
+
+    (* String converions *)
+
+    let sep = "#"
+
+    let string_of_x x =
+      list_to_string ~sep:sep (L.map x ~f:(fun b -> if b then "1" else "0"))
+
+    let string_of_y (i1,i2) =
+      (string_of_int i1) ^ sep ^ (string_of_int i2)
+
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep) str) ~f:(fun s -> if s = "1" then true else false)
+
+    let y_of_string str =
+      match S.split ~on:(Char.of_string sep) str with
+      | s1 :: s2 :: [] -> (int_of_string s1), (int_of_string s2)
+      | _ -> failwith "wrong input"
+  end
+  in
+  (module Characterization : PredEnc_Characterization)
