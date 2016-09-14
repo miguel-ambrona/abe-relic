@@ -35,7 +35,7 @@ module B = (val make_BilinearGroup 2)
 
 let test_predEnc () =
 
-  let n_attrs = 6 in      (* Global number of attributes *)
+  let n_attrs = 6 in     (* Global number of attributes *)
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
   let and_bound = 3 in    (* Bound on the number of AND gates *)
 
@@ -43,7 +43,7 @@ let test_predEnc () =
   let r = n_attrs * repetitions + 1 in
   let w = n_attrs * repetitions + and_bound + 1 in
 
-  let module C = (val make_BF_PredEnc_Characterization s r w) in
+  let module C = (val make_BF_PredEnc_Characterization ~simplify:true s r w) in
   let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
@@ -405,8 +405,8 @@ let test_predEnc_ZIP () =
 
 let test_predEnc_Broadcast () =
 
-  let t = 60 in
-  let t' = 60 in
+  let t = 10 in
+  let t' = 10 in
 
   let module C = (val make_BroadcastEnc_Characterization t t') in
   let module PE = PredEnc_from_Characterization (C) in

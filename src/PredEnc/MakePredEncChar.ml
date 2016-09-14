@@ -13,11 +13,12 @@ open PredEnc
 
 (* Predicate Encoding Characterization for Ciphertet-Policy ABE for boolean formulas *)
 
-let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
+let make_BF_PredEnc_Characterization ?(simplify = false) (s : int) (r : int) (w : int) =
 
   let module Characterization = struct
 
     module GaussElim = LinAlg(Zp)
+    module MyGaussElim = MyGaussElim (Zp)
 
     let rec expand_a output a = function
       | [] -> if a = [] then output else assert false
@@ -55,12 +56,20 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
       let l = L.length y in
       let l' = w - l in
       let diag_y = diagonal_matrix ~zero:Zp.zero y in
+      let diag_y =
+        if simplify then let d,_ = L.filter (L.zip_exn diag_y y) ~f:(fun (_,yi) -> not (Zp.is_zero yi)) |> L.unzip in d
+        else diag_y
+      in
       join_blocks
         [[ create_matrix Zp.zero ~m:1 ~n:l; create_matrix Zp.zero ~m:1 ~n:(l'-1); create_matrix Zp.one ~m:1 ~n:1 ];
-         [ diag_y; create_matrix Zp.zero ~m:l ~n:(l'-1); create_matrix Zp.zero ~m:l ~n:1 ]]
+         [ diag_y; create_matrix Zp.zero ~m:(L.length diag_y) ~n:(l'-1); create_matrix Zp.zero ~m:(L.length diag_y) ~n:1 ]]
 
     let kE_vector y =
-      Zp.one :: (mk_list Zp.zero (L.length y))
+      let zeros =
+        if not simplify then mk_list Zp.zero (L.length y)
+        else mk_list Zp.zero (L.count y ~f:(fun yi -> not (Zp.is_zero yi)))
+      in
+      Zp.one :: zeros
 
     let sD_vector xM y =
       let a = match get_a xM y with
@@ -73,6 +82,10 @@ let make_BF_PredEnc_Characterization (s : int) (r : int) (w : int) =
       let a = match get_a xM y with
         | None -> mk_list Zp.zero (L.length y) (* Decryption failed *)
         | Some a -> expand_a [] a y
+      in
+      let a =
+        if not simplify then a
+        else let a',_ = L.filter (L.zip_exn a y) ~f:(fun (_,yi) -> not (Zp.is_zero yi)) |> L.unzip in a'
       in
       Zp.one :: a
 

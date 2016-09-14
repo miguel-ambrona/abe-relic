@@ -147,6 +147,13 @@ module MyGaussElim (Field : Field) = struct
     let _, det = gaussian_elimination matrix in
     det
 
+  let reduced_row_echelon_form matrix =
+    let m = L.length matrix in
+    let n = L.length (L.hd_exn matrix) in
+    let id_m = identity_matrix ~zero:Field.zero ~one:Field.one ~n:m in
+    let reduced, _ = gaussian_elimination (join_blocks [[matrix; id_m]]) in
+    L.map reduced ~f:(fun row -> (L.slice row 0 n, L.slice row n (n+m))) |> L.unzip
+
   let kernel matrix =
     let m = L.length matrix in
     let n = L.length (L.hd_exn matrix) in

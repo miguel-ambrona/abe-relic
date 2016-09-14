@@ -68,6 +68,7 @@ let make_BilinearGroup (k : int) =
     let zero = mk_list (R.g1_infty ()) (k+1)
     let mul t a =
       if Zp.is_zero a then zero
+      else if Zp.equal a Zp.one then t
       else (g1_mul_ref := !g1_mul_ref + k; L.map t ~f:(fun g -> R.g1_mul g a))
     let samp () =
       zp_samp_ref := !zp_samp_ref + k + 1;
@@ -101,6 +102,7 @@ let make_BilinearGroup (k : int) =
     let zero = mk_list (R.g2_infty ()) (k+1)
     let mul t a =
       if Zp.is_zero a then zero
+      else if Zp.equal a Zp.one then t
       else (g2_mul_ref := !g2_mul_ref + k; L.map t ~f:(fun g -> R.g2_mul g a))
     let samp () =
       zp_samp_ref := !zp_samp_ref + k + 1;
