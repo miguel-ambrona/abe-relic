@@ -35,7 +35,7 @@ module B = (val make_BilinearGroup 2)
 
 let test_predEnc () =
 
-  let n_attrs = 6 in     (* Global number of attributes *)
+  let n_attrs = 6 in      (* Global number of attributes *)
   let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
   let and_bound = 3 in    (* Bound on the number of AND gates *)
 
