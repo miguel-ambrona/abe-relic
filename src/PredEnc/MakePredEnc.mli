@@ -1,6 +1,8 @@
 open PredEnc
 
 val make_BF_PredEnc : int -> (module PredEnc)
+                               
+val make_Fast_BF_PredEnc : int -> (module PredEnc)
 
 val make_InnerProduct_PredEnc : int -> (module PredEnc)
 

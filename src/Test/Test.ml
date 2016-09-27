@@ -71,6 +71,41 @@ let test_predEnc () =
       (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
   else failwith "Predicate Encodings test failed"
 
+let test_Fast_BF_predEnc () =
+
+  let n_attrs = 6 in      (* Global number of attributes *)
+  let repetitions = 2 in  (* Bound on the number of times the same attribute can appear as a Leaf node *)
+  let and_bound = 3 in    (* Bound on the number of AND gates *)
+
+  let w = repetitions * n_attrs in
+
+  let module PE = (val make_Fast_BF_PredEnc w) in
+  let module ABE = PredEncABE (B) (DSG) (PE) in
+  
+  let t1 = Unix.gettimeofday() in
+  let mpk, msk = ABE.setup () in
+  let xM = ABE.set_x (BoolForm_Policy(n_attrs, repetitions, and_bound, policy1 |. policy2)) in
+  
+  let msg = ABE.rand_msg () in
+  let ct_x = ABE.enc mpk xM msg in
+  
+  let y = ABE.set_y (BoolForm_Attrs(n_attrs, repetitions, [ phd_att; cs_att ])) in
+  
+  let sk_y = ABE.keyGen mpk msk y in
+  let msg' = ABE.dec mpk sk_y ct_x in
+
+  let y' = ABE.set_y (BoolForm_Attrs(n_attrs, repetitions, [ phd_att; maths_att; handsome_att; dark_att ])) in
+
+  let sk_y' = ABE.keyGen mpk msk y' in
+  let msg'' = ABE.dec mpk sk_y' ct_x in
+
+  let t2 = Unix.gettimeofday() in
+
+  if not (B.Gt.equal msg msg') && (B.Gt.equal msg msg'') then
+    F.printf "Predicate Enc. Fast BF test succedded!\t Time: \027[32m%F\027[0m seconds\n"
+      (Pervasives.ceil ((100.0 *. (t2 -. t1))) /. 100.0)
+  else failwith "Predicate Encodings test failed"
+
 
 let test_predEnc_Disjunction () =
 

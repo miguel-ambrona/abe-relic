@@ -113,6 +113,92 @@ let make_BF_PredEnc (n : int) =
   (module BF_PredEnc : PredEnc)
 
 
+(* *** Fast Monotonic Boolean Formulas *)
+
+(* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
+
+let make_Fast_BF_PredEnc (n : int) =
+
+  let module BF_PredEnc (B : BilinearGroup) = struct
+
+    module GaussElim = LinAlg(Zp)
+
+    type x = Zp.t list list
+    type y = Zp.t list
+
+    let n = n+1
+
+    let get_a xM y =
+      let y_minus_one = diagonal_matrix ~zero:Zp.zero (L.map y ~f:(fun yi -> Zp.add yi (Zp.neg Zp.one))) in
+      let n_zeros = [mk_list Zp.zero (L.length y)] in
+      let block1 = join_blocks [ [ n_zeros; [[Zp.neg Zp.one]] ];
+                                 [ y_minus_one; transpose_matrix n_zeros ];
+                                 [ n_zeros; [[Zp.one]] ]
+                               ]
+      in
+      let one_zeros = [Zp.one :: (mk_list Zp.zero ((L.length (L.hd_exn xM))-1))] in
+      let block2 = join_blocks [ [ one_zeros ];
+                                 [ xM ];
+                                 [ [mk_list Zp.zero (L.length (L.hd_exn xM))] ]
+                               ]
+      in
+      let matrix = join_blocks [ [block2 ; block1] ] in
+      match GaussElim.solve matrix ((mk_list Zp.zero ((L.length matrix)-1)) @ [Zp.one]) with
+      | None -> mk_list Zp.zero (L.length (L.hd_exn matrix)) (* Decryption failed *)
+      | Some a -> a
+
+    let sE xM w0_w =
+      let xMw = matrix_times_vector ~add:B.G1.add ~mul:(fun exp g -> B.G1.mul g exp) (transpose_matrix xM) (L.tl_exn w0_w) in
+      (B.G1.add (L.hd_exn w0_w) (L.hd_exn xMw)) :: (L.tl_exn xMw)
+                                                     
+    let rE y w0_w =
+      let one_minus_y = L.map y ~f:(fun yi -> Zp.add Zp.one (Zp.neg yi)) in
+      (L.map2_exn ~f:B.G2.mul (L.tl_exn w0_w) one_minus_y) @ [L.hd_exn w0_w]
+
+    let kE y alpha =
+      (mk_list B.G2.zero (L.length y)) @ [alpha]
+
+    let sD xM y c =
+      let a = get_a xM y in
+      vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c (L.slice a 0 ((L.length a)-(L.length y)-1))
+
+    let rD xM y d =
+      let a = get_a xM y in
+      vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d (L.slice a ((L.length a)-(L.length y)-1) (L.length a))
+
+    let set_x = function
+      | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
+         pred_enc_matrix_from_policy ~nattrs ~rep ~and_gates ~t_of_int:Zp.from_int policy
+      | _ -> failwith "wrong input"
+
+    let set_y = function
+      | BoolForm_Attrs (nattrs, rep, attrs) ->
+         pred_enc_set_attributes ~one:Zp.one ~zero:Zp.zero ~nattrs ~rep (L.map attrs ~f:(fun a -> Leaf(a)))
+      | _ -> failwith "wrong input"
+
+
+    (* String converions *)
+
+    let sep1 = "#"
+    let sep2 = ";"
+
+    let string_of_x x =
+      list_list_to_string ~sep1 ~sep2 (L.map x ~f:(L.map ~f:Zp.write_str))
+
+    let string_of_y y =
+      list_to_string ~sep:sep2 (L.map y ~f:Zp.write_str)
+
+    let x_of_string str =
+      L.map (S.split ~on:(Char.of_string sep1) str)
+        ~f:(fun row -> L.map (S.split ~on:(Char.of_string sep2) row) ~f:Zp.read_str)
+
+    let y_of_string str =
+      L.map (S.split ~on:(Char.of_string sep2) str) ~f:Zp.read_str
+  end
+  in
+  (module BF_PredEnc : PredEnc)
+
+
 (* *** Zero Inner Product *)
 
 (* Predicate Encoding for Ciphertet-Policy ABE for Zero Inner Product *)
@@ -352,6 +438,8 @@ let make_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
 
 (* Predicate Encoding for Arithmetic Span Programs *)
 
+let computed = ref None
+    
 let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
 
   let module ArithmeticSpanProgram_PredEnc (B : BilinearGroup) = struct
@@ -365,45 +453,61 @@ let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
     let l' = l
     let n = 2*l
 
-    let sE x w_v_u =
+    let sE x w_v =
+      computed := None;
       let ( +! ) = L.map2_exn ~f:B.G1.add in
-      let w = L.slice w_v_u 0 l in
-      let v = L.slice w_v_u l (2*l) in
+      let w = L.slice w_v 0 l in
+      let v = L.slice w_v l (2*l) in
       (L.map v ~f:B.G1.neg) +! (L.map2_exn ~f:B.G1.mul w x)
 
-    let rE (y,z) w_v_u =
+    let rE (y,z) w_v =
+      computed := None;
       let ( +! ) = L.map2_exn ~f:B.G2.add in
-      let w = L.slice w_v_u 0 l in
-      let v = L.slice w_v_u l (2*l) in
+      let w = L.slice w_v 0 l in
+      let v = L.slice w_v l (2*l) in
       let mul exp g = B.G2.mul g exp in
       let wz = matrix_times_vector ~add:B.G2.add ~mul (transpose_matrix z) w in
       let vy = matrix_times_vector ~add:B.G2.add ~mul (transpose_matrix y) v in
       wz +! vy
 
     let kE _ alpha =
+      computed := None;
       (mk_list B.G2.zero (l'-1)) @ [alpha]
 
     let sD x (y,z) c =
-      let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
-      let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
-      let l = L.length (L.hd_exn xy_z) in
-      let matrix = xy_z @ [(mk_list Zp.zero (l'-1)) @ [Zp.one]] in
-      match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
-      | None -> B.G1.zero (* Decryption failed *)
+      match !computed with
+      | None -> 
+         let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
+         let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
+         let l = L.length (L.hd_exn xy_z) in
+         let matrix = xy_z @ [(mk_list Zp.zero (l'-1)) @ [Zp.one]] in
+         begin match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
+         | None -> B.G1.zero (* Decryption failed *)
+         | Some a ->
+            computed := Some a;
+            let b = L.map ~f:Zp.neg (matrix_times_vector ~add:Zp.add ~mul:Zp.mul y a) in
+            vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c b
+         end
       | Some a ->
          let b = L.map ~f:Zp.neg (matrix_times_vector ~add:Zp.add ~mul:Zp.mul y a) in
          vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c b
 
     let rD x (y,z) d =
-      let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
-      let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
-      let l = L.length (L.hd_exn xy_z) in
-      let matrix = xy_z @ [(mk_list Zp.zero (l'-1)) @ [Zp.one]] in
-      match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
-      | None -> B.G2.zero (* Decryption failed *)
+      match !computed with
+      | None ->
+         let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
+         let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
+         let l = L.length (L.hd_exn xy_z) in
+         let matrix = xy_z @ [(mk_list Zp.zero (l'-1)) @ [Zp.one]] in
+         begin match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
+         | None -> B.G2.zero (* Decryption failed *)
+         | Some a ->
+            computed := Some a;
+            vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d a
+         end
       | Some a ->
          vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d a
-
+                             
     let set_x = function
       | BoolForm_Attrs (nattrs, rep', attrs) ->
          assert (rep = rep');

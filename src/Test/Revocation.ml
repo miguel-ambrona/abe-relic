@@ -19,7 +19,7 @@ let run_test ~t ~t' () =
   let module PE = PredEnc_from_Characterization (C) in
   let module ABE = PredEncABE (B) (DSG) (PE) in
 
-  let rep = 3 in
+  let rep = 5 in
   let setup_time  = ref 0.0 in
   let enc_time    = ref 0.0 in
   let keygen_time = ref 0.0 in
@@ -37,9 +37,9 @@ let run_test ~t ~t' () =
     let time3 = Unix.gettimeofday() in
     let id = 0 in
     let y = ABE.set_y (BroadcastEncIndex(t,t', (id/t,id mod t))) in
+    let sk_y = ABE.keyGen mpk msk y in
 
     let time4 = Unix.gettimeofday() in
-    let sk_y = ABE.keyGen mpk msk y in
     let msg' = ABE.dec mpk sk_y ct_x in
 
     let time5 = Unix.gettimeofday() in
@@ -62,6 +62,6 @@ let run_test ~t ~t' () =
   F.print_flush ()
 
 let test () =
-  (for n = 1 to 100 do
+  (for n = 1 to 200 do
      run_test ~t:n ~t':n ()
    done)

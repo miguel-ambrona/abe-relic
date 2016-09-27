@@ -21,8 +21,8 @@ let empty_references () =
   ()
 
 let print_references () =
-  F.printf "Zp_samp: %d,\tG1_add: %d,\tG2_add: %d,\tGt_mul: %d\t" !zp_samp_ref !g1_add_ref !g2_add_ref !gt_mul_ref;
-  F.printf "G1_mul: %d,\tG2_mul: %d,\tGt_exp: %d,\te_map: %d\n\n" !g1_mul_ref !g2_mul_ref !gt_exp_ref !e_map_ref;
+  F.printf "Zp_samp:%d G1_add:%d G2_add:%d Gt_mul:%d " !zp_samp_ref !g1_add_ref !g2_add_ref !gt_mul_ref;
+  F.printf "G1_mul:%d G2_mul:%d Gt_exp:%d e_map:%d\n" !g1_mul_ref !g2_mul_ref !gt_exp_ref !e_map_ref;
   F.print_flush ()
 
 let rec equal_lists ~equal list1 list2 =

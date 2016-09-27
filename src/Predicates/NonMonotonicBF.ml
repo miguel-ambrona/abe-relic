@@ -86,3 +86,32 @@ let pp_arithmetic_formula_nf _fmt afn =
     | _       -> F.printf "%a * %a" Zp.pp c (pp_list " * " pp_var) vars
   in
   F.printf "%a\n" (pp_list " + " pp_term) afn
+
+           
+(* * Check satisfiability of Non-Monotonic Boolean Formulas *)
+
+let rec eval_nm_boolean_formula ~attributes = function
+  | OR (f1,f2) ->
+     if eval_nm_boolean_formula ~attributes f1 then true
+     else eval_nm_boolean_formula ~attributes f2
+  | AND (f1,f2) ->
+     (eval_nm_boolean_formula ~attributes f1) && (eval_nm_boolean_formula ~attributes f2)
+  | NOT (f) -> not (eval_nm_boolean_formula ~attributes f)
+  | LEAF (a) -> L.mem attributes a
+
+
+(* * Generation of Non-Monotonic Boolean Formulas *)
+
+let generate_nm_bool_formula attributes =
+  let rec aux = function
+    | [] -> failwith "empty formula"
+    | f :: [] -> f
+    | _ as rest_formulas ->
+       let f1, others = extract_random rest_formulas in
+       let f2, rest_formulas = extract_random others in
+       let f1 = if (Rand.int 10) = 0 then f1 else NOT(f1) in
+       let f2 = if (Rand.int 10) = 0 then f2 else NOT(f2) in
+       if (Rand.int 2) = 0 then aux (OR(f1,f2) :: rest_formulas)
+       else aux (AND(f1,f2) :: rest_formulas)
+  in
+  aux (L.map attributes ~f:(fun a -> LEAF a))
