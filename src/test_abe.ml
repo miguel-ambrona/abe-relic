@@ -22,12 +22,5 @@ let main =
     match Sys.argv.(1) with
     | "revocation" -> Revocation.test ()
     | "ASP" -> ArithmeticSpanP.test ()
+    | "boolean_formulas" -> FastBoolForms.test ()
     | _ -> BoolFormsTest.test Sys.argv.(1)
-
-    (*for n = 10 to 10000 do
-      (if n % 5 = 0 then
-         BoolFormsTest.bigPredEnc_test n
-       else ()
-      );
-    done
-     *)

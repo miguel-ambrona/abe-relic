@@ -17,6 +17,8 @@ open NonMonotonicBF
 
 (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
 
+let dec_vector_bf = ref None
+
 let make_BF_PredEnc (n : int) =
 
   let module BF_PredEnc (B : BilinearGroup) = struct
@@ -29,6 +31,7 @@ let make_BF_PredEnc (n : int) =
     let n = n
 
     let sE xM w_u_u0 =
+      dec_vector_bf := None;
       let ( +! ) = L.map2_exn ~f:B.G1.add in
       let l = L.length xM in
       let l' = L.length (L.hd_exn xM) in
@@ -38,12 +41,14 @@ let make_BF_PredEnc (n : int) =
       w +! (matrix_times_vector ~add:B.G1.add ~mul:(fun exp g -> B.G1.mul g exp) xM (u0 :: u))
 
     let rE y w_u_u0 =
+      dec_vector_bf := None;
       let l = L.length y in
       let w = L.slice w_u_u0 0 l in
       let u0 = L.hd_exn (L.tl_exn w_u_u0) in
       u0 :: (L.map2_exn ~f:B.G2.mul w y)
 
     let kE y alpha =
+      dec_vector_bf := None;
       alpha :: (mk_list B.G2.zero (L.length y))
 
     let sD xM y c =
@@ -52,14 +57,24 @@ let make_BF_PredEnc (n : int) =
       if filtered = [] then B.G1.zero (* No attributes in the key *)
       else
         let matrix = transpose_matrix filtered in
-        match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
-        | None -> B.G1.zero (* Decryption failed *)
+        match !dec_vector_bf with
+        | None ->
+           begin match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
+           | None -> B.G1.zero (* Decryption failed *)
+           | Some a ->
+              dec_vector_bf := Some a;
+              let y_c = L.filter (L.zip_exn c y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+              let a_y_c = L.map2_exn ~f:B.G1.mul y_c a in
+              L.fold_left (L.tl_exn a_y_c)
+                          ~init:(L.hd_exn a_y_c)
+                          ~f:B.G1.add
+           end
         | Some a ->
            let y_c = L.filter (L.zip_exn c y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
            let a_y_c = L.map2_exn ~f:B.G1.mul y_c a in
            L.fold_left (L.tl_exn a_y_c)
-             ~init:(L.hd_exn a_y_c)
-             ~f:B.G1.add
+                       ~init:(L.hd_exn a_y_c)
+                       ~f:B.G1.add
 
     let rD xM y d_d' =
       let l' = L.length (L.hd_exn xM) in
@@ -67,8 +82,22 @@ let make_BF_PredEnc (n : int) =
       if filtered = [] then B.G2.zero (* No attributes in the key *)
       else
         let matrix = transpose_matrix filtered in
-        match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
-        | None -> B.G2.zero (* Decryption failed *)
+        match !dec_vector_bf with
+        | None ->
+           begin match GaussElim.solve matrix ((R.bn_one ()) :: (mk_list (R.bn_zero ()) (l'-1))) with
+           | None -> B.G2.zero (* Decryption failed *)
+           | Some a ->
+              dec_vector_bf := Some a;
+              let d' = L.hd_exn d_d' in
+              let d = L.tl_exn d_d' in
+              let d = L.filter (L.zip_exn d y) ~f:(fun (_,yi) -> not (R.bn_is_zero yi)) |> unzip1 in
+              let a_d = L.map2_exn ~f:B.G2.mul d a in
+              B.G2.add
+                d'
+                (L.fold_left (L.tl_exn a_d)
+                             ~init:(L.hd_exn a_d)
+                             ~f:B.G2.add)
+           end
         | Some a ->
            let d' = L.hd_exn d_d' in
            let d = L.tl_exn d_d' in
@@ -77,8 +106,8 @@ let make_BF_PredEnc (n : int) =
            B.G2.add
              d'
              (L.fold_left (L.tl_exn a_d)
-                ~init:(L.hd_exn a_d)
-                ~f:B.G2.add)
+                          ~init:(L.hd_exn a_d)
+                          ~f:B.G2.add)
 
     let set_x = function
       | BoolForm_Policy (nattrs, rep, and_gates, policy) ->
@@ -117,6 +146,8 @@ let make_BF_PredEnc (n : int) =
 
 (* Predicate Encoding for Ciphertet-Policy ABE for boolean formulas *)
 
+let dec_vector = ref None
+
 let make_Fast_BF_PredEnc (n : int) =
 
   let module BF_PredEnc (B : BilinearGroup) = struct
@@ -129,33 +160,42 @@ let make_Fast_BF_PredEnc (n : int) =
     let n = n+1
 
     let get_a xM y =
-      let y_minus_one = diagonal_matrix ~zero:Zp.zero (L.map y ~f:(fun yi -> Zp.add yi (Zp.neg Zp.one))) in
-      let n_zeros = [mk_list Zp.zero (L.length y)] in
-      let block1 = join_blocks [ [ n_zeros; [[Zp.neg Zp.one]] ];
-                                 [ y_minus_one; transpose_matrix n_zeros ];
-                                 [ n_zeros; [[Zp.one]] ]
-                               ]
-      in
-      let one_zeros = [Zp.one :: (mk_list Zp.zero ((L.length (L.hd_exn xM))-1))] in
-      let block2 = join_blocks [ [ one_zeros ];
-                                 [ xM ];
-                                 [ [mk_list Zp.zero (L.length (L.hd_exn xM))] ]
-                               ]
-      in
-      let matrix = join_blocks [ [block2 ; block1] ] in
-      match GaussElim.solve matrix ((mk_list Zp.zero ((L.length matrix)-1)) @ [Zp.one]) with
-      | None -> mk_list Zp.zero (L.length (L.hd_exn matrix)) (* Decryption failed *)
+      match !dec_vector with
+      | None ->
+         let y_minus_one = diagonal_matrix ~zero:Zp.zero (L.map y ~f:(fun yi -> Zp.add yi (Zp.neg Zp.one))) in
+         let n_zeros = [mk_list Zp.zero (L.length y)] in
+         let block1 = join_blocks [ [ n_zeros; [[Zp.neg Zp.one]] ];
+                                    [ y_minus_one; transpose_matrix n_zeros ];
+                                    [ n_zeros; [[Zp.one]] ]
+                                  ]
+         in
+         let one_zeros = [Zp.one :: (mk_list Zp.zero ((L.length (L.hd_exn xM))-1))] in
+         let block2 = join_blocks [ [ one_zeros ];
+                                    [ xM ];
+                                    [ [mk_list Zp.zero (L.length (L.hd_exn xM))] ]
+                                  ]
+         in
+         let matrix = join_blocks [ [block2 ; block1] ] in
+         begin match GaussElim.solve matrix ((mk_list Zp.zero ((L.length matrix)-1)) @ [Zp.one]) with
+         | None -> mk_list Zp.zero (L.length (L.hd_exn matrix)) (* Decryption failed *)
+         | Some a ->
+            dec_vector := Some a;
+            a
+         end
       | Some a -> a
 
     let sE xM w0_w =
+      dec_vector := None;
       let xMw = matrix_times_vector ~add:B.G1.add ~mul:(fun exp g -> B.G1.mul g exp) (transpose_matrix xM) (L.tl_exn w0_w) in
       (B.G1.add (L.hd_exn w0_w) (L.hd_exn xMw)) :: (L.tl_exn xMw)
-                                                     
+
     let rE y w0_w =
+      dec_vector := None;
       let one_minus_y = L.map y ~f:(fun yi -> Zp.add Zp.one (Zp.neg yi)) in
       (L.map2_exn ~f:B.G2.mul (L.tl_exn w0_w) one_minus_y) @ [L.hd_exn w0_w]
 
     let kE y alpha =
+      dec_vector := None;
       (mk_list B.G2.zero (L.length y)) @ [alpha]
 
     let sD xM y c =
@@ -351,13 +391,17 @@ let make_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
     let l' = l
     let n = 2*l + (l'- 1)
 
+    let computed = ref None
+
     let sE x w_v_u =
+      computed := None;
       let ( +! ) = L.map2_exn ~f:B.G1.add in
       let w = L.slice w_v_u 0 l in
       let v = L.slice w_v_u l (2*l) in
       v +! (L.map2_exn ~f:B.G1.mul w x)
 
     let rE (y,z) w_v_u =
+      computed := None;
       let ( +! ) = L.map2_exn ~f:B.G2.add in
       let w = L.slice w_v_u 0 l in
       let v = L.slice w_v_u l (2*l) in
@@ -368,16 +412,24 @@ let make_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
         (v +! (matrix_times_vector ~add:B.G2.add ~mul:(fun exp g -> B.G2.mul g exp) z' u))
 
     let kE (y,z) alpha =
+      computed := None;
       (L.map y ~f:(fun row -> let last = L.hd_exn (L.rev row) in B.G2.mul alpha last)) @
         (L.map z ~f:(fun row -> let last = L.hd_exn (L.rev row) in B.G2.mul alpha last))
 
     let sD x (y,z) c =
+      computed := None;
       let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
       let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
       let l = L.length (L.hd_exn xy_z) in
       let matrix = transpose_matrix xy_z in
-      match GaussElim.solve matrix ((mk_list Zp.zero (l-1)) @ [Zp.one]) with
-      | None -> B.G1.zero (* Decryption failed *)
+      match !computed with
+      | None ->
+         begin match GaussElim.solve matrix ((mk_list Zp.zero (l-1)) @ [Zp.one]) with
+         | None -> B.G1.zero (* Decryption failed *)
+         | Some a ->
+            computed := Some a;
+            vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c a
+         end
       | Some a ->
          vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c a
 
@@ -386,8 +438,17 @@ let make_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
       let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
       let l = L.length (L.hd_exn xy_z) in
       let matrix = transpose_matrix xy_z in
-      match GaussElim.solve matrix ((mk_list Zp.zero (l-1)) @ [Zp.one]) with
-      | None -> B.G2.zero (* Decryption failed *)
+      match !computed with
+      | None ->
+         begin match GaussElim.solve matrix ((mk_list Zp.zero (l-1)) @ [Zp.one]) with
+         | None -> B.G2.zero (* Decryption failed *)
+         | Some a ->
+            computed := Some a;
+            let (d,d') = L.split_n d ((L.length d) / 2) in
+            let xd = L.map2_exn x d ~f:(fun x_el d_el -> B.G2.mul d_el x_el) in
+            let xd_d' = L.map2_exn xd d' ~f:B.G2.add in
+            vector_times_vector ~add:B.G2.add ~mul:B.G2.mul xd_d' a
+         end
       | Some a ->
          let (d,d') = L.split_n d ((L.length d) / 2) in
          let xd = L.map2_exn x d ~f:(fun x_el d_el -> B.G2.mul d_el x_el) in
@@ -438,8 +499,8 @@ let make_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
 
 (* Predicate Encoding for Arithmetic Span Programs *)
 
-let computed = ref None
-    
+let computed_fast = ref None
+
 let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
 
   let module ArithmeticSpanProgram_PredEnc (B : BilinearGroup) = struct
@@ -454,14 +515,14 @@ let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
     let n = 2*l
 
     let sE x w_v =
-      computed := None;
+      computed_fast := None;
       let ( +! ) = L.map2_exn ~f:B.G1.add in
       let w = L.slice w_v 0 l in
       let v = L.slice w_v l (2*l) in
       (L.map v ~f:B.G1.neg) +! (L.map2_exn ~f:B.G1.mul w x)
 
     let rE (y,z) w_v =
-      computed := None;
+      computed_fast := None;
       let ( +! ) = L.map2_exn ~f:B.G2.add in
       let w = L.slice w_v 0 l in
       let v = L.slice w_v l (2*l) in
@@ -471,12 +532,12 @@ let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
       wz +! vy
 
     let kE _ alpha =
-      computed := None;
+      computed_fast := None;
       (mk_list B.G2.zero (l'-1)) @ [alpha]
 
     let sD x (y,z) c =
-      match !computed with
-      | None -> 
+      match !computed_fast with
+      | None ->
          let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
          let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
          let l = L.length (L.hd_exn xy_z) in
@@ -484,7 +545,7 @@ let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
          begin match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
          | None -> B.G1.zero (* Decryption failed *)
          | Some a ->
-            computed := Some a;
+            computed_fast := Some a;
             let b = L.map ~f:Zp.neg (matrix_times_vector ~add:Zp.add ~mul:Zp.mul y a) in
             vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c b
          end
@@ -493,7 +554,7 @@ let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
          vector_times_vector ~add:B.G1.add ~mul:B.G1.mul c b
 
     let rD x (y,z) d =
-      match !computed with
+      match !computed_fast with
       | None ->
          let xy = L.map2_exn x y ~f:(fun x_el yj -> L.map yj ~f:(fun y_el -> Zp.mul x_el y_el)) in
          let xy_z = L.map2_exn xy z ~f:(fun xyj zj -> L.map2_exn ~f:Zp.add xyj zj) in
@@ -502,12 +563,12 @@ let make_Fast_ArithmeticSpanProgram_PredEnc (n_x : int) (rep : int) =
          begin match GaussElim.solve matrix ((mk_list Zp.zero l) @ [Zp.one]) with
          | None -> B.G2.zero (* Decryption failed *)
          | Some a ->
-            computed := Some a;
+            computed_fast := Some a;
             vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d a
          end
       | Some a ->
          vector_times_vector ~add:B.G2.add ~mul:B.G2.mul d a
-                             
+
     let set_x = function
       | BoolForm_Attrs (nattrs, rep', attrs) ->
          assert (rep = rep');

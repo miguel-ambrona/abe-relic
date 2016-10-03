@@ -25,17 +25,23 @@ let run_test ~n_attributes ~and_gates ~rep ~max_leaf_nodes () =
   let module PE2 = (val make_BF_PairEnc max_leaf_nodes and_gates n_attributes) in
   let module ABE2 = PairEncABE (B) (DSG) (PE2) in
 
-  let rec valid_decryption_key_policy () =
+  let rec _valid_decryption_key_policy () =
     let key_size = 1 + Rand.int n_attributes in
     let key_attributes = random_permutation ~len:key_size attributes in
     let leaf_nodes = 1 + (Rand.int max_leaf_nodes) in
     let policy = generate_bool_formula ~and_gates ~leaf_nodes ~rep attributes in
     if eval_boolean_formula ~attributes:key_attributes policy then key_attributes, policy
-    else valid_decryption_key_policy ()
+    else _valid_decryption_key_policy ()
   in
-  let key_attributes, policy = valid_decryption_key_policy () in
+
+  let all_and_formula =
+    L.fold_left (L.tl_exn attributes)
+      ~init:(Leaf (L.hd_exn attributes))
+      ~f:(fun f a -> And(f, Leaf a))
+  in
+  let key_attributes, policy = attributes, all_and_formula in
   F.printf "Policy -> %s. Key -> [%a]\n"
-    (string_of_boolean_formula policy) (pp_list ", " pp_attribute) key_attributes;
+           (string_of_boolean_formula policy) (pp_list ", " pp_attribute) key_attributes;
 
   (* ** Predicate-Encodings *)
 
@@ -56,13 +62,13 @@ let run_test ~n_attributes ~and_gates ~rep ~max_leaf_nodes () =
 
   F.printf "Enc:\tTime:%Fs " (round (t2 -. t1) 3.0);
   print_references();
-  
+
   empty_references ();
   let t1 = Unix.gettimeofday() in
   let y =  ABE1.set_y (Predicates.BoolForm_Attrs(n_attributes, rep, key_attributes)) in
   let sk_y = ABE1.keyGen mpk msk y in
   let t2 = Unix.gettimeofday() in
-  
+
   F.printf "KeyGen:\tTime:%Fs " (round (t2 -. t1) 3.0);
   print_references();
 
@@ -75,7 +81,7 @@ let run_test ~n_attributes ~and_gates ~rep ~max_leaf_nodes () =
   print_references();
 
   assert (B.Gt.equal msg msg');
-  
+
   (* ** Pair-Encodings *)
 
   empty_references ();
@@ -85,7 +91,7 @@ let run_test ~n_attributes ~and_gates ~rep ~max_leaf_nodes () =
 
   F.printf "(PairEnc)\nSetup:\tTime:%Fs " (round (t2 -. t1) 3.0);
   print_references();
-  
+
   empty_references ();
   let t1 = Unix.gettimeofday() in
   let xM  = ABE2.set_x (Predicates.BoolForm_Policy(max_leaf_nodes, and_gates+1, 0, policy)) in
@@ -95,13 +101,13 @@ let run_test ~n_attributes ~and_gates ~rep ~max_leaf_nodes () =
 
   F.printf "Enc:\tTime:%Fs " (round (t2 -. t1) 3.0);
   print_references();
-  
+
   empty_references ();
   let t1 = Unix.gettimeofday() in
   let y =  ABE2.set_y (Predicates.BoolForm_Attrs(0, 0, key_attributes)) in
   let sk_y = ABE2.keyGen mpk msk y in
   let t2 = Unix.gettimeofday() in
-  
+
   F.printf "KeyGen:\tTime:%Fs " (round (t2 -. t1) 3.0);
   print_references();
 
@@ -192,15 +198,9 @@ let bigPredEnc_test n =
   let msg_rand = ABE.rand_msg () in
   let ct_x = ABE.enc mpk xM msg_rand in
 
-  (*let t2 = Unix.gettimeofday() in
-  F.printf "Encryption:  %F seconds.\n" (round (t2 -. t1) 3.0); F.print_flush ();*)
-
   let y =  ABE.set_y (Predicates.BoolForm_Attrs(n, 1, [Att(5)])) in
   let sk_y = ABE.keyGen mpk msk y in
   let msg = ABE.dec mpk sk_y ct_x in
-
-  (*let t3 = Unix.gettimeofday() in
-  F.printf "Decryption1: %F seconds.\n" (round (t3 -. t2) 3.0); F.print_flush ();*)
 
   let y' =  ABE.set_y (Predicates.BoolForm_Attrs(n, 1, [Att(7)])) in
   let sk_y' = ABE.keyGen mpk msk y' in
@@ -210,8 +210,7 @@ let bigPredEnc_test n =
 
   assert (B.Gt.equal msg_rand msg);
   assert (not (B.Gt.equal msg_rand msg'));
-  (*F.printf "Decryption2: %F seconds.\n" (round (t4 -. t3) 3.0); F.print_flush ();*)
-  (*F.printf "Big Predicate Encodings succeded in %F seconds.\n" (round (t4 -. t1) 3.0)*)
+
   F.printf "%d, %F\n" n (round (t4 -. t1) 3.0); F.print_flush ()
 
 
@@ -224,13 +223,13 @@ let test algorithm =
 
   (match algorithm with
    | "predEnc" -> ()
-   | "both" ->
+   | "comparison" ->
       for n = i1 to i2 do
         let n_attributes = n in
-        let and_gates = n_attributes / 2 in
+        let and_gates = n_attributes - 1 in
         let rep = 1 in
         let max_leaf_nodes = n_attributes * rep in
-        F.printf "Test %d/%d:\n" (10 + !counter) (10+n_tests);
+        F.printf "Test %d/%d:\n" (!counter) (n_tests);
         counter := !counter + 1;
         run_test ~n_attributes ~and_gates ~rep ~max_leaf_nodes ()
       done
